@@ -36,7 +36,7 @@ public class MixinIrisSodiumChunkShaderInterface {
 //    }
     
     @Inject(
-        method = "setup",
+        method = "setupState",
         at = @At("RETURN")
     )
     private void onSetup(CallbackInfo ci) {

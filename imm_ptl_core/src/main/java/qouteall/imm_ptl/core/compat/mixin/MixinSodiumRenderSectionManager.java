@@ -1,11 +1,9 @@
 package qouteall.imm_ptl.core.compat.mixin;
 
 import it.unimi.dsi.fastutil.objects.ObjectList;
-import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderList;
 import me.jellysquid.mods.sodium.client.render.chunk.RenderSection;
 import me.jellysquid.mods.sodium.client.render.chunk.RenderSectionManager;
-import net.minecraft.client.Camera;
-import net.minecraft.core.BlockPos;
+import me.jellysquid.mods.sodium.client.render.chunk.lists.ChunkRenderList;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.apache.commons.lang3.Validate;
 import org.spongepowered.asm.mixin.Final;
@@ -14,26 +12,21 @@ import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import qouteall.imm_ptl.core.compat.sodium_compatibility.IESodiumRenderSectionManager;
 import qouteall.imm_ptl.core.compat.sodium_compatibility.SodiumRenderingContext;
-import qouteall.imm_ptl.core.render.context_management.PortalRendering;
 import qouteall.imm_ptl.core.render.context_management.RenderStates;
 
 @Mixin(value = RenderSectionManager.class, remap = false)
 public class MixinSodiumRenderSectionManager implements IESodiumRenderSectionManager {
-    @Shadow
     @Final
     @Mutable
     private ChunkRenderList chunkRenderList;
     
-    @Shadow
     @Final
     @Mutable
     private ObjectList<RenderSection> tickableChunks;
     
-    @Shadow
     @Final
     @Mutable
     private ObjectList<BlockEntity> visibleBlockEntities;

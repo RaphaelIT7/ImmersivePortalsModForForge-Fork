@@ -64,9 +64,9 @@
     "client.MixinGlDebug",
     "client.MixinLivingEntity_C",
     "client.MixinMinecraft",
-    "client.block_manipulation.MixinGameRenderer_B",
-    "client.block_manipulation.MixinMinecraft_B",
-    "client.block_manipulation.MixinMultiPlayerGameMode",
+    "client.interaction.MixinGameRenderer_B",
+    "client.interaction.MixinMinecraft_B",
+    "client.interaction.MixinMultiPlayerGameMode",
     "client.collisions.MixinLocalPlayer",
     "client.multiworld_awareness.MixinBiomeAmbientSoundPlayer",
     "client.multiworld_awareness.MixinFogRenderer",
@@ -108,7 +108,8 @@
     "client.sync.MixinServerboundMovePlayerPacketPos",
     "client.sync.MixinServerBoundMovePlayerPacketPosRot",
     "client.sync.MixinServerboundMovePlayerPacketRot",
-    "client.sync.MixinServerboundMovePlayerPacketStatusOnly"
+    "client.sync.MixinServerboundMovePlayerPacketStatusOnly",
+    "client.accessor.IEClientLevel_Accessor"
   ],
   "injectors": {
     "defaultRequire": 1

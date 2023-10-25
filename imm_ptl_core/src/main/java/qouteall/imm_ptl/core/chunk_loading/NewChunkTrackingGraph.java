@@ -1,10 +1,7 @@
 package qouteall.imm_ptl.core.chunk_loading;
 
-import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongList;
-import it.unimi.dsi.fastutil.longs.LongSortedSet;
+import it.unimi.dsi.fastutil.longs.*;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
 import net.minecraft.resources.ResourceKey;
@@ -13,6 +10,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import org.apache.commons.lang3.Validate;
+import org.jetbrains.annotations.Nullable;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.miscellaneous.GcMonitor;
@@ -22,14 +20,7 @@ import qouteall.q_misc_util.MiscHelper;
 import qouteall.q_misc_util.my_util.SignalBiArged;
 
 import java.lang.ref.WeakReference;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.WeakHashMap;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -143,7 +134,12 @@ public class NewChunkTrackingGraph {
     private static Long2ObjectLinkedOpenHashMap<ArrayList<PlayerWatchRecord>> getChunkRecordMap(ResourceKey<Level> dimension) {
         return data.computeIfAbsent(dimension, k -> new Long2ObjectLinkedOpenHashMap<>());
     }
-    
+
+    private static Long2ObjectOpenHashMap<Object2ObjectOpenHashMap<ServerPlayer, PlayerWatchRecord>>
+    getDimChunkWatchRecords(ResourceKey<Level> dimension) {
+        return chunkWatchRecords.computeIfAbsent(dimension, k -> new Long2ObjectOpenHashMap<>());
+    }
+
     public static PlayerInfo getPlayerInfo(ServerPlayer player) {
         return playerInfoMap.computeIfAbsent(player, k -> new PlayerInfo());
     }
@@ -453,32 +449,48 @@ public class NewChunkTrackingGraph {
         data.clear();
         additionalChunkLoaders.clear();
     }
-    
+
     public static Stream<ServerPlayer> getPlayersViewingChunk(
-        ResourceKey<Level> dimension,
-        int x, int z
+            ResourceKey<Level> dimension,
+            int x, int z
     ) {
-        ArrayList<PlayerWatchRecord> records = getChunkRecordMap(dimension)
-            .get(ChunkPos.asLong(x, z));
+        var records = getPlayerWatchListRecord(dimension, x, z);
         if (records == null) {
             return Stream.empty();
         }
-        return records.stream().filter(r -> r.isLoadedToPlayer).map(r -> r.player);
+        return records.values().stream().filter(e -> e.isLoadedToPlayer).map(e -> e.player);
     }
-    
-    // return -1 for none
-    public static int getMinimumWatchingDistance(
-        ResourceKey<Level> dimension,
-        long chunkPos
+
+    public static List<ServerPlayer> getPlayersViewingChunk(
+            ResourceKey<Level> dimension,
+            int x, int z,
+            boolean boundaryOnly
     ) {
-        ArrayList<PlayerWatchRecord> records = getChunkRecordMap(dimension)
-            .get(chunkPos);
-        if (records == null) {
-            return -1;
+        var recs =
+                NewChunkTrackingGraph.getPlayerWatchListRecord(dimension, x, z);
+
+        if (recs == null) {
+            return Collections.emptyList();
         }
-        
-        return records.stream().filter(r -> r.isLoadedToPlayer)
-            .mapToInt(r -> r.distanceToSource).min().orElse(-1);
+
+        // the boundaryOnly parameter is only true when sending light update packets
+        // the client can calculate the light by the block data, but not accurate on loading boundary
+
+        ArrayList<ServerPlayer> result = new ArrayList<>();
+        for (NewChunkTrackingGraph.PlayerWatchRecord rec : recs.values()) {
+            if (rec.isLoadedToPlayer && (!boundaryOnly || rec.isBoundary)) {
+                result.add(rec.player);
+            }
+        }
+
+        return result;
+    }
+
+    @Nullable
+    public static Object2ObjectOpenHashMap<ServerPlayer, PlayerWatchRecord> getPlayerWatchListRecord(
+            ResourceKey<Level> dimension, int x, int z
+    ) {
+        return getDimChunkWatchRecords(dimension).get(ChunkPos.asLong(x, z));
     }
     
     /**
@@ -494,7 +506,7 @@ public class NewChunkTrackingGraph {
         return getPlayersViewingChunk(dimension, x, z)
             .filter(player -> {
                 ChunkPos chunkPos = player.chunkPosition();
-                return player.level.dimension() != dimension ||
+                return player.level().dimension() != dimension ||
                     Helper.getChebyshevDistance(x, z, chunkPos.x, chunkPos.z) > 4;
             });
     }
@@ -580,7 +592,7 @@ public class NewChunkTrackingGraph {
         ChunkVisibility.playerDirectLoader(player).foreachChunkPos((dim, x, z, dis) -> {
             if (isPlayerWatchingChunk(player, dim, x, z)) {
                 
-                MyLoadingTicket.addTicketIfNotLoaded(((ServerLevel) player.level), new ChunkPos(x, z));
+                MyLoadingTicket.addTicketIfNotLoaded(((ServerLevel) player.level()), new ChunkPos(x, z));
             }
         });
     }
