@@ -1,12 +1,13 @@
 package qouteall.imm_ptl.core.ducks;
 
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import qouteall.imm_ptl.core.collision.PortalCollisionHandler;
 import qouteall.imm_ptl.core.portal.Portal;
-import qouteall.imm_ptl.core.teleportation.PortalCollisionHandler;
 
-import javax.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 public interface IEEntity {
     void ip_notifyCollidingWithPortal(Entity portal);
@@ -20,15 +21,17 @@ public interface IEEntity {
     
     @Nullable
     @Deprecated
-    Portal getCollidingPortal();
+    Portal ip_getCollidingPortal();
     
-    void tickCollidingPortal();
+    void ip_tickCollidingPortal();
     
-    boolean isRecentlyCollidingWithPortal();
+    boolean ip_isCollidingWithPortal();
+    
+    boolean ip_isRecentlyCollidingWithPortal();
     
     void ip_clearCollidingPortal();
     
-    void portal_unsetRemoved();
+    void ip_unsetRemoved();
     
     @Nullable
     AABB ip_getActiveCollisionBox(AABB originalBox);
@@ -36,4 +39,6 @@ public interface IEEntity {
     // don't trigger entity section update or other update
     // as we are temporarily switching the position
     void ip_setPositionWithoutTriggeringCallback(Vec3 newPos);
+    
+    void ip_setWorld(Level world);
 }

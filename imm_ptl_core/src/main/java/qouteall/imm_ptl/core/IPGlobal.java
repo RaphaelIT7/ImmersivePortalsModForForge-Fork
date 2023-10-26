@@ -6,6 +6,7 @@ import me.shedaniel.autoconfig.ConfigHolder;
 import qouteall.imm_ptl.core.chunk_loading.ChunkDataSyncManager;
 import qouteall.imm_ptl.core.platform_specific.IPConfig;
 import qouteall.imm_ptl.core.teleportation.ServerTeleportationManager;
+import qouteall.q_misc_util.MiscHelper;
 import qouteall.q_misc_util.my_util.MyTaskList;
 import qouteall.q_misc_util.my_util.Signal;
 
@@ -35,7 +36,7 @@ public class IPGlobal {
     
     public static ServerTeleportationManager serverTeleportationManager;
     
-    public static Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    public static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     
     public static int maxPortalLayer = 5;
     
@@ -96,7 +97,7 @@ public class IPGlobal {
     public static boolean easeCreativePermission = true;
     public static boolean easeCommandStickPermission = true;
     
-    public static boolean enableDepthClampForPortalRendering = false;
+    public static boolean enableDepthClampForPortalRendering = true;
     
     public static boolean enableServerCollision = true;
     
@@ -134,6 +135,12 @@ public class IPGlobal {
     public static boolean enableUpdateNotification = true;
     
     public static boolean logClientPlayerCollidingPortalUpdate = false;
+    
+    public static boolean chunkPacketDebug = false;
+    
+    public static boolean entityUnloadDebug = false;
+    
+    public static boolean debugRenderPortalShapeMesh = false;
     
     public static enum RenderMode {
         normal,

@@ -3,6 +3,7 @@ package qouteall.imm_ptl.core.platform_specific.mixin.common;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraftforge.common.util.ITeleporter;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -13,14 +14,13 @@ import qouteall.imm_ptl.core.portal.custom_portal_gen.CustomPortalGenManagement;
 
 @Mixin(ServerPlayer.class)
 public class MixinServerPlayerEntity_MA {
-//    @Inject(method = "Lnet/minecraft/server/level/ServerPlayer;changeDimension(Lnet/minecraft/server/level/ServerLevel;)Lnet/minecraft/world/entity/Entity;", at = @At("HEAD")) //TODO @Nick1st Reimplement this
-//    private void onChangeDimensionByVanilla(
-//        ServerLevel serverWorld,
-//        CallbackInfoReturnable<Entity> cir
-//    ) {
-//        ServerPlayer this_ = (ServerPlayer) (Object) this;
-//        onBeforeDimensionTravel(this_);
-//    }
+    @Inject(method = "changeDimension", at = @At("HEAD"))
+    private void onChangeDimensionByVanilla(
+            ServerLevel p_9180_, ITeleporter teleporter, CallbackInfoReturnable<Entity> cir
+    ) {
+        ServerPlayer this_ = (ServerPlayer) (Object) this;
+        onBeforeDimensionTravel(this_);
+    }
     
     // update chunk visibility data
     @Inject(method = "Lnet/minecraft/server/level/ServerPlayer;teleportTo(Lnet/minecraft/server/level/ServerLevel;DDDFF)V", at = @At("HEAD"))
@@ -35,7 +35,7 @@ public class MixinServerPlayerEntity_MA {
     ) {
         ServerPlayer this_ = (ServerPlayer) (Object) this;
         
-        if (this_.level != targetWorld) {
+        if (this_.level() != targetWorld) {
             onBeforeDimensionTravel(this_);
         }
     }

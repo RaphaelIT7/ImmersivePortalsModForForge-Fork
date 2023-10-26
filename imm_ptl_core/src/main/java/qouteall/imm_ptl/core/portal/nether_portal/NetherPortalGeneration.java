@@ -11,12 +11,12 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.Nullable;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.chunk_loading.ChunkLoader;
 import qouteall.imm_ptl.core.chunk_loading.DimensionalChunkPos;
 import qouteall.imm_ptl.core.chunk_loading.NewChunkTrackingGraph;
-import qouteall.imm_ptl.core.platform_specific.IPRegistry;
 import qouteall.imm_ptl.core.platform_specific.O_O;
 import qouteall.imm_ptl.core.portal.LoadingIndicatorEntity;
 import qouteall.imm_ptl.core.portal.PortalPlaceholderBlock;
@@ -25,7 +25,6 @@ import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.my_util.IntBox;
 import qouteall.q_misc_util.my_util.LimitedLogger;
 
-import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
@@ -76,11 +75,8 @@ public class NetherPortalGeneration {
             if (allowForcePlacement) {
                 Helper.err("Cannot find air cube within 32 blocks? " +
                     "Force placed portal. It will occupy normal blocks.");
-                
-                return IntBox.getBoxByBasePointAndSize(
-                    neededAreaSize,
-                    mappedPosInOtherDimension
-                );
+    
+                return IntBox.fromBasePointAndSize(mappedPosInOtherDimension, neededAreaSize);
             }
             else {
                 return null;
@@ -91,7 +87,7 @@ public class NetherPortalGeneration {
     
     private static boolean isFloating(ServerLevel toWorld, IntBox foundAirCube) {
         return foundAirCube.getSurfaceLayer(Direction.DOWN).stream().noneMatch(
-            blockPos -> toWorld.getBlockState(blockPos.below()).getMaterial().isSolid()
+            blockPos -> toWorld.getBlockState(blockPos.below()).isSolid()
         );
     }
     
@@ -102,7 +98,7 @@ public class NetherPortalGeneration {
     ) {
         world.setBlockAndUpdate(
             pos,
-                IPRegistry.NETHER_PORTAL_BLOCK.get().defaultBlockState().setValue(
+            PortalPlaceholderBlock.instance.defaultBlockState().setValue(
                 PortalPlaceholderBlock.AXIS, normalAxis
             )
         );

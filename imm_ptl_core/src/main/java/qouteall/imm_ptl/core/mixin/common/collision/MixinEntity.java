@@ -17,34 +17,33 @@ import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.injection.*;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.IPMcHelper;
+import qouteall.imm_ptl.core.api.ImmPtlEntityExtension;
+import qouteall.imm_ptl.core.collision.PortalCollisionHandler;
 import qouteall.imm_ptl.core.ducks.IEEntity;
 import qouteall.imm_ptl.core.miscellaneous.IPVanillaCopy;
 import qouteall.imm_ptl.core.portal.EndPortalEntity;
 import qouteall.imm_ptl.core.portal.Portal;
-import qouteall.imm_ptl.core.teleportation.PortalCollisionHandler;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.my_util.LimitedLogger;
 
 @Mixin(Entity.class)
-public abstract class MixinEntity implements IEEntity {
+public abstract class MixinEntity implements IEEntity, ImmPtlEntityExtension {
     
     @Nullable
+    @Unique
     private PortalCollisionHandler ip_portalCollisionHandler;
     
     @Shadow
-    public abstract AABB getBoundingBox();
-    
-    @Shadow
-    public Level level;
-    
-    @Shadow
-    public abstract void setBoundingBox(AABB box_1);
+    private Level level;
     
     @Shadow
     protected abstract Vec3 collide(Vec3 vec3d_1);
@@ -61,17 +60,9 @@ public abstract class MixinEntity implements IEEntity {
     @Shadow
     public abstract double getZ();
     
-    @Shadow
-    protected abstract BlockPos getOnPos();
-    
-    @Shadow
-    public boolean blocksBuilding;
     
     @Shadow
     public int tickCount;
-    
-    @Shadow
-    public abstract Vec3 getDeltaMovement();
     
     @Shadow
     protected abstract void unsetRemoved();
@@ -83,9 +74,6 @@ public abstract class MixinEntity implements IEEntity {
     private BlockPos blockPosition;
     
     @Shadow
-    private Vec3 deltaMovement;
-    
-    @Shadow
     protected abstract AABB getBoundingBoxForPose(Pose pose);
     
     @Shadow
@@ -93,6 +81,11 @@ public abstract class MixinEntity implements IEEntity {
     private BlockState feetBlockState;
     @Shadow
     private ChunkPos chunkPosition;
+
+    @Shadow public abstract Level level();
+
+    @Shadow public abstract AABB getBoundingBox();
+
     private static final LimitedLogger limitedLogger = new LimitedLogger(20);
     
     @Redirect(
@@ -104,7 +97,7 @@ public abstract class MixinEntity implements IEEntity {
     )
     private Vec3 redirectHandleCollisions(Entity entity, Vec3 attemptedMove) {
         if (!IPGlobal.enableServerCollision) {
-            if (!entity.level.isClientSide()) {
+            if (!entity.level().isClientSide()) {
                 if (entity instanceof Player) {
                     return attemptedMove;
                 }
@@ -118,7 +111,7 @@ public abstract class MixinEntity implements IEEntity {
             // avoid loading too many chunks in collision calculation and lag the server
             limitedLogger.invoke(() -> {
                 Helper.err("Skipping collision calculation because entity moves too fast %s%s%d"
-                    .formatted(entity, attemptedMove, entity.level.getGameTime()));
+                    .formatted(entity, attemptedMove, entity.level().getGameTime()));
                 new Throwable().printStackTrace();
             });
             
@@ -147,7 +140,7 @@ public abstract class MixinEntity implements IEEntity {
         cancellable = true
     )
     private void onIsFireImmune(CallbackInfoReturnable<Boolean> cir) {
-        if (getCollidingPortal() instanceof EndPortalEntity) {
+        if (ip_getCollidingPortal() instanceof EndPortalEntity) {
             cir.setReturnValue(true);
             cir.cancel();
         }
@@ -174,8 +167,8 @@ public abstract class MixinEntity implements IEEntity {
         locals = LocalCapture.CAPTURE_FAILHARD,
         cancellable = true
     )
-    private void onCheckInsideBlocks(CallbackInfo ci, AABB box) {
-        if (box == null) {
+    private void onCheckInsideBlocks(CallbackInfo ci) {
+        if (this.getBoundingBox() == null) {
             ci.cancel();
         }
     }
@@ -183,7 +176,7 @@ public abstract class MixinEntity implements IEEntity {
     // avoid suffocation when colliding with a portal on wall
     @Inject(method = "Lnet/minecraft/world/entity/Entity;isInWall()Z", at = @At("HEAD"), cancellable = true)
     private void onIsInsideWall(CallbackInfoReturnable<Boolean> cir) {
-        if (isRecentlyCollidingWithPortal()) {
+        if (ip_isRecentlyCollidingWithPortal()) {
             cir.setReturnValue(false);
         }
     }
@@ -194,7 +187,9 @@ public abstract class MixinEntity implements IEEntity {
         at = @At("HEAD")
     )
     private void onSetPos(double nx, double ny, double nz, CallbackInfo ci) {
-        if (((Object) this) instanceof ServerPlayer) {
+        Entity this_ = (Entity) (Object) this;
+        
+        if (this_ instanceof ServerPlayer) {
             if (IPGlobal.teleportationDebugEnabled) {
                 if (Math.abs(getX() - nx) > 10 ||
                     Math.abs(getY() - ny) > 10 ||
@@ -213,25 +208,9 @@ public abstract class MixinEntity implements IEEntity {
         }
     }
     
-    // when going through a portal with scaling, it sometimes wrongly crouch
-    // because of floating-point inaccuracy with bounding box
-    // NOTE even it does not crouch, the player is slightly inside the block, and the collision won't always work
-    // This is a workaround before finding the correct way of fixing floating-point inaccuracy of collision box after teleportation
-//    @ModifyConstant(
-//        method = "canEnterPose",
-//        constant = @Constant(doubleValue = 1.0E-7)
-//    )
-//    double modifyShrinkNum(double originalValue) {
-//        if (isRecentlyCollidingWithPortal()) {
-//            return 0.01;
-//        }
-//
-//        return originalValue;
-//    }
-    
     /**
      * @author qouteall
-     * @reason hard to do without performance loss without overwriting
+     * @reason mixin does not allow cancel in redirect
      */
     @Overwrite
     public boolean canEnterPose(Pose pose) {
@@ -241,19 +220,20 @@ public abstract class MixinEntity implements IEEntity {
             return true;
         }
         return this.level.noCollision(
-            this_,
-            activeCollisionBox.deflate(0.1)
+            this_, activeCollisionBox.deflate(1.0E-7)
+            // TODO check the issue of wrongly crouch after going through a scaling portal
+            //  when head is touching ceiling because of floating point error
         );
     }
     
     // fix climbing onto ladder cross portal
     @Inject(method = "Lnet/minecraft/world/entity/Entity;getFeetBlockState()Lnet/minecraft/world/level/block/state/BlockState;", at = @At("HEAD"), cancellable = true)
     private void onGetBlockState(CallbackInfoReturnable<BlockState> cir) {
-        Portal collidingPortal = ((IEEntity) this).getCollidingPortal();
+        Portal collidingPortal = ((IEEntity) this).ip_getCollidingPortal();
         Entity this_ = (Entity) (Object) this;
         if (collidingPortal != null) {
             if (collidingPortal.getNormal().y > 0) {
-                BlockPos remoteLandingPos = new BlockPos(
+                BlockPos remoteLandingPos = BlockPos.containing(
                     collidingPortal.transformPoint(this_.position())
                 );
                 
@@ -304,7 +284,7 @@ public abstract class MixinEntity implements IEEntity {
 //    }
     
     @Override
-    public Portal getCollidingPortal() {
+    public Portal ip_getCollidingPortal() {
         if (ip_portalCollisionHandler == null) {
             return null;
         }
@@ -318,7 +298,7 @@ public abstract class MixinEntity implements IEEntity {
     // because between these two operations, this tick pos is the same as last tick pos
     // CollisionHelper.getStretchedBoundingBox uses the difference between this tick pos and last tick pos
     @Override
-    public void tickCollidingPortal() {
+    public void ip_tickCollidingPortal() {
         Entity this_ = (Entity) (Object) this;
         
         if (ip_portalCollisionHandler != null) {
@@ -342,7 +322,15 @@ public abstract class MixinEntity implements IEEntity {
     }
     
     @Override
-    public boolean isRecentlyCollidingWithPortal() {
+    public boolean ip_isCollidingWithPortal() {
+        if (ip_portalCollisionHandler == null) {
+            return false;
+        }
+        return ip_portalCollisionHandler.hasCollisionEntry();
+    }
+    
+    @Override
+    public boolean ip_isRecentlyCollidingWithPortal() {
         if (ip_portalCollisionHandler == null) {
             return false;
         }
@@ -350,7 +338,7 @@ public abstract class MixinEntity implements IEEntity {
     }
     
     @Override
-    public void portal_unsetRemoved() {
+    public void ip_unsetRemoved() {
         unsetRemoved();
     }
     
@@ -418,6 +406,11 @@ public abstract class MixinEntity implements IEEntity {
     @Override
     public void ip_setPortalCollisionHandler(@Nullable PortalCollisionHandler handler) {
         ip_portalCollisionHandler = handler;
+    }
+    
+    @Override
+    public void ip_setWorld(Level world) {
+        this.level = world;
     }
     
     // don't use game time because client game time may jump due to time synchronization

@@ -6,12 +6,12 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraft.world.InteractionResult;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import qouteall.imm_ptl.core.block_manipulation.BlockManipulationServer;
 import qouteall.imm_ptl.core.chunk_loading.*;
-import qouteall.imm_ptl.core.commands.AxisArgumentType;
+import qouteall.imm_ptl.core.collision.CollisionHelper;
 import qouteall.imm_ptl.core.commands.PortalCommand;
-import qouteall.imm_ptl.core.commands.SubCommandArgumentType;
-import qouteall.imm_ptl.core.commands.TimingFunctionArgumentType;
 import qouteall.imm_ptl.core.compat.IPPortingLibCompat;
+import qouteall.imm_ptl.core.debug.DebugUtil;
 import qouteall.imm_ptl.core.miscellaneous.GcMonitor;
 import qouteall.imm_ptl.core.network.IPNetworking;
 import qouteall.imm_ptl.core.platform_specific.IPConfig;
@@ -20,7 +20,6 @@ import qouteall.imm_ptl.core.portal.PortalExtension;
 import qouteall.imm_ptl.core.portal.animation.NormalAnimation;
 import qouteall.imm_ptl.core.portal.animation.RotationAnimation;
 import qouteall.imm_ptl.core.portal.global_portals.GlobalPortalStorage;
-import qouteall.imm_ptl.core.teleportation.CollisionHelper;
 import qouteall.imm_ptl.core.teleportation.ServerTeleportationManager;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.LifecycleHack;
@@ -47,29 +46,31 @@ public class IPModMain {
             }
         });
         IPGlobal.serverCleanupSignal.connect(IPGlobal.serverTaskList::forceClearTasks);
-        
+
         IPGlobal.serverTeleportationManager = new ServerTeleportationManager();
         IPGlobal.chunkDataSyncManager = new ChunkDataSyncManager();
-        
+
         NewChunkTrackingGraph.init();
-        
+
         WorldInfoSender.init();
-        
+
         GlobalPortalStorage.init();
-        
+
         EntitySync.init();
-        
+
         CollisionHelper.init();
-        
+
         PortalExtension.init();
-        
+
         GcMonitor.initCommon();
-        
+
         ServerPerformanceMonitor.init();
-        
-        MyLoadingTicket.init();
-        
+
+        ImmPtlChunkTickets.init();
+
         IPPortingLibCompat.init();
+
+        BlockManipulationServer.init();
         
 //        CommandRegistrationCallback.EVENT.register( // TODO @Nick1st Check this out
 //            (dispatcher, registryAccess, environment) -> PortalCommand.register(dispatcher)
@@ -77,7 +78,7 @@ public class IPModMain {
 //        SubCommandArgumentType.init();
 //        TimingFunctionArgumentType.init();
 //        AxisArgumentType.init();
-        
+        DebugUtil.init();
         // intrinsic animation driver types
         RotationAnimation.init();
         NormalAnimation.init();
@@ -115,7 +116,7 @@ public class IPModMain {
             ipConfig.onConfigChanged();
             return InteractionResult.SUCCESS;
         });
-        IPConfig ipConfig = IPConfig.readConfig();
+        IPConfig ipConfig = IPConfig.getConfig();
         ipConfig.onConfigChanged();
     }
 }

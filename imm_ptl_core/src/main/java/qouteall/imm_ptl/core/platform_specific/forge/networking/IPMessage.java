@@ -31,37 +31,25 @@ public class IPMessage {
         INSTANCE.messageBuilder(Dim_Confirm.class, id(), NetworkDirection.PLAY_TO_CLIENT)
                 .decoder(Dim_Confirm::new)
                 .encoder(Dim_Confirm::toBytes)
-                .consumer(Dim_Confirm::handle)
+                .consumerMainThread(Dim_Confirm::handle)
                 .add();
 
         INSTANCE.messageBuilder(Spawn_Entity.class, id(), NetworkDirection.PLAY_TO_CLIENT) //Actually find out if we need an override or if this is fine (It seems to be)
                 .decoder(Spawn_Entity::new)
                 .encoder(Spawn_Entity::toBytes)
-                .consumer(Spawn_Entity::handle)
+                .consumerMainThread(Spawn_Entity::handle)
                 .add();
 
         INSTANCE.messageBuilder(Teleport.class, id(), NetworkDirection.PLAY_TO_SERVER)
                 .decoder(Teleport::new)
                 .encoder(Teleport::toBytes)
-                .consumer(Teleport::handle)
-                .add();
-
-        INSTANCE.messageBuilder(PlayerAction.class, id(), NetworkDirection.PLAY_TO_SERVER)
-                .decoder(PlayerAction::new)
-                .encoder(PlayerAction::toBytes)
-                .consumer(PlayerAction::handle)
-                .add();
-
-        INSTANCE.messageBuilder(RightClick.class, id(), NetworkDirection.PLAY_TO_SERVER)
-                .decoder(RightClick::new)
-                .encoder(RightClick::toBytes)
-                .consumer(RightClick::handle)
+                .consumerMainThread(Teleport::handle)
                 .add();
 
         INSTANCE.messageBuilder(GlobalPortalUpdate.class, id(), NetworkDirection.PLAY_TO_CLIENT)
                 .decoder(GlobalPortalUpdate::new)
                 .encoder(GlobalPortalUpdate::toBytes)
-                .consumer(GlobalPortalUpdate::handle)
+                .consumerMainThread(GlobalPortalUpdate::handle)
                 .add();
     }
 

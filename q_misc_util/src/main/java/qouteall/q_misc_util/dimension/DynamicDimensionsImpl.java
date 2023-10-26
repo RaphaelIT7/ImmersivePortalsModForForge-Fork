@@ -1,8 +1,13 @@
 package qouteall.q_misc_util.dimension;
 
 import com.google.common.collect.ImmutableList;
-import net.minecraft.Util;
+import com.mojang.serialization.DynamicOps;
+import com.mojang.serialization.Lifecycle;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.MappedRegistry;
+import net.minecraft.core.Registry;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.resources.ResourceKey;
@@ -19,6 +24,7 @@ import net.minecraft.world.level.border.WorldBorder;
 import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.WorldGenSettings;
+import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.storage.DerivedLevelData;
 import net.minecraft.world.level.storage.ServerLevelData;
 import net.minecraft.world.level.storage.WorldData;
@@ -30,10 +36,10 @@ import qouteall.q_misc_util.MiscGlobals;
 import qouteall.q_misc_util.MiscHelper;
 import qouteall.q_misc_util.MiscNetworking;
 import qouteall.q_misc_util.api.DimensionAPI;
+import qouteall.q_misc_util.ducks.IEMappedRegistry2;
 import qouteall.q_misc_util.ducks.IEMinecraftServer_Misc;
 import qouteall.q_misc_util.forge.events.ServerDimensionDynamicUpdateEvent;
-import qouteall.q_misc_util.forge.networking.Dim_Sync;
-import qouteall.q_misc_util.forge.networking.Message;
+import qouteall.q_misc_util.mixin.dimension.IEMappedRegistry;
 import qouteall.q_misc_util.mixin.dimension.IEWorldBorder;
 import qouteall.q_misc_util.my_util.MyTaskList;
 import qouteall.q_misc_util.my_util.SignalArged;
@@ -90,7 +96,8 @@ public class DynamicDimensionsImpl {
             false, // isDebug
             obfuscatedSeed,
             ImmutableList.of(),
-            false // only true for overworld
+            false, // only true for overworld
+            overworld.getRandomSequences()
         );
         
         worldBorder.addListener(
@@ -99,19 +106,31 @@ public class DynamicDimensionsImpl {
         
         ((IEMinecraftServer_Misc) server).ip_addDimensionToWorldMap(dimensionResourceKey, newWorld);
         
+        /**
+         * register it into registry, so it will be saved in
+         * {@link WorldGenSettings#encode(DynamicOps, WorldOptions, RegistryAccess)} ,
+         * so it will be saved into level.dat
+         * */
+        Registry<LevelStem> levelStemRegistry = server.registryAccess().registryOrThrow(Registries.LEVEL_STEM);
+        ((IEMappedRegistry) levelStemRegistry).ip_setIsFrozen(false);
+        ((MappedRegistry<LevelStem>) levelStemRegistry).register(
+            ResourceKey.create(Registries.LEVEL_STEM, dimensionId),
+            levelStem, Lifecycle.stable()
+        );
+        ((IEMappedRegistry) levelStemRegistry).ip_setIsFrozen(true);
+        
         worldBorder.applySettings(serverLevelData.getWorldBorder());
         
         Helper.log("Added Dimension " + dimensionId);
         
         DimensionIdManagement.updateAndSaveServerDimIdRecord();
         
-        Dim_Sync dimSyncPacket = new Dim_Sync(); //MiscNetworking.createDimSyncPacket();
+        Packet dimSyncPacket = MiscNetworking.createDimSyncPacket();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            Message.sendToPlayer(dimSyncPacket, player);
-            //player.connection.send(dimSyncPacket);
+            player.connection.send(dimSyncPacket);
         }
-
-//        DimensionAPI.serverDimensionDynamicUpdateEvent.invoker().run(server.levelKeys()); //TODO Reimplement this !DONE
+        
+        //DimensionAPI.serverDimensionDynamicUpdateEvent.invoker().run(server.levelKeys());
         MinecraftForge.EVENT_BUS.post(new ServerDimensionDynamicUpdateEvent(server.levelKeys()));
     }
     
@@ -188,15 +207,20 @@ public class DynamicDimensionsImpl {
             
             resetWorldBorderListener(server);
             
+            // force remove it from registry, so it will not be saved into level.dat
+            Registry<LevelStem> levelStemRegistry = server.registryAccess()
+                .registryOrThrow(Registries.LEVEL_STEM);
+            ((IEMappedRegistry2) levelStemRegistry).ip_forceRemove(dimension.location());
+            
             Helper.log("Successfully Removed Dimension " + dimension.location());
-
-            Dim_Sync dimSyncPacket = new Dim_Sync();
+            
+            Packet dimSyncPacket = MiscNetworking.createDimSyncPacket();
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                Message.sendToPlayer(dimSyncPacket, player);
+                player.connection.send(dimSyncPacket);
             }
-
+            
+            //DimensionAPI.serverDimensionDynamicUpdateEvent.invoker().run(server.levelKeys());
             MinecraftForge.EVENT_BUS.post(new ServerDimensionDynamicUpdateEvent(server.levelKeys()));
-//            DimensionAPI.serverDimensionDynamicUpdateEvent.invoker().run(server.levelKeys()); //TODO Reimplement this !DONE
         }));
     }
     

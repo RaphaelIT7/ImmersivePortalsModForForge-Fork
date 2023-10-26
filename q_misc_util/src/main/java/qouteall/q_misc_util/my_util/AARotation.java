@@ -2,19 +2,15 @@ package qouteall.q_misc_util.my_util;
 
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import com.mojang.math.OctahedralGroup;
-import it.unimi.dsi.fastutil.objects.ObjectArrays;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
 import org.apache.commons.lang3.Validate;
+import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.Nonnull;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.List;
 
 /**
  * Axis-Aligned Rotations.
@@ -78,13 +74,18 @@ public enum AARotation {
     }
     
     public Direction transformDirection(Direction direction) {
-        return Direction.fromNormal(transform(direction.getNormal()));
+        BlockPos transformedVec = transform(direction.getNormal());
+        return Direction.fromDelta(
+            transformedVec.getX(),
+            transformedVec.getY(),
+            transformedVec.getZ()
+        );
     }
     
-    @Nonnull
+    @NotNull
     public static Direction dirCrossProduct(Direction a, Direction b) {
         Validate.isTrue(a.getAxis() != b.getAxis());
-        Direction result = Direction.fromNormal(
+        Direction result = Direction.fromDelta(
             a.getStepY() * b.getStepZ() - a.getStepZ() * b.getStepY(),
             a.getStepZ() * b.getStepX() - a.getStepX() * b.getStepZ(),
             a.getStepX() * b.getStepY() - a.getStepY() * b.getStepX()

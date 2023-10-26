@@ -36,7 +36,7 @@ public class RightClick {
     public boolean handle(Supplier<NetworkEvent.Context> supplier) {
         NetworkEvent.Context ctx = supplier.get();
         ctx.enqueueWork(() -> IPGlobal.serverTaskList.addTask(() -> {
-            BlockManipulationServer.processRightClickBlock(dimension, packet, ctx.getSender());
+            //BlockManipulationServer.processRightClickBlock(dimension, packet, ctx.getSender());
             return true;
         }));
         ctx.setPacketHandled(true);

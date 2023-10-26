@@ -1,23 +1,37 @@
 package qouteall.imm_ptl.core.teleportation;
 
+import com.mojang.logging.LogUtils;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.event.ForgeEventFactory;
+import net.minecraft.world.level.pathfinder.Path;
+import net.minecraft.world.phys.Vec3;
 import org.apache.commons.lang3.Validate;
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.IPMcHelper;
 import qouteall.imm_ptl.core.McHelper;
-import qouteall.imm_ptl.core.compat.PehkuiInterface;
 import qouteall.imm_ptl.core.chunk_loading.NewChunkTrackingGraph;
 import qouteall.imm_ptl.core.compat.GravityChangerInterface;
+import qouteall.imm_ptl.core.compat.PehkuiInterface;
 import qouteall.imm_ptl.core.ducks.IEEntity;
 import qouteall.imm_ptl.core.ducks.IEServerPlayNetworkHandler;
 import qouteall.imm_ptl.core.ducks.IEServerPlayerEntity;
 import qouteall.imm_ptl.core.network.IPNetworking;
 import qouteall.imm_ptl.core.platform_specific.O_O;
-import qouteall.imm_ptl.core.platform_specific.forge.networking.Dim_Confirm;
-import qouteall.imm_ptl.core.platform_specific.forge.networking.IPMessage;
 import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.imm_ptl.core.portal.global_portals.GlobalPortalStorage;
 import qouteall.q_misc_util.Helper;
@@ -26,24 +40,7 @@ import qouteall.q_misc_util.api.McRemoteProcedureCall;
 import qouteall.q_misc_util.dimension.DynamicDimensionsImpl;
 import qouteall.q_misc_util.my_util.LimitedLogger;
 import qouteall.q_misc_util.my_util.MyTaskList;
-
-import javax.annotation.Nullable;
-
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.Tuple;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.Projectile;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.pathfinder.Path;
-import net.minecraft.world.phys.Vec3;
+import qouteall.q_misc_util.my_util.WithDim;
 
 import java.util.HashSet;
 import java.util.List;
@@ -53,16 +50,14 @@ import java.util.WeakHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+// TODO change this to per-server-object to handle multi-server-in-one-JVM case
 public class ServerTeleportationManager {
-    private Set<ServerPlayer> teleportingEntities = new HashSet<>();
+    private static final Logger LOGGER = LogUtils.getLogger();
+    
+    private Set<Entity> teleportingEntities = new HashSet<>();
     private WeakHashMap<Entity, Long> lastTeleportGameTime = new WeakHashMap<>();
     public boolean isFiringMyChangeDimensionEvent = false;
-    public final WeakHashMap<ServerPlayer, Tuple<ResourceKey<Level>, Vec3>> lastPosition =
-        new WeakHashMap<>();
-    
-    // The old teleport way does not recreate the entity
-    // It's problematic because some AI-related fields contain world reference
-    private static final boolean useOldTeleport = false;
+    public final WeakHashMap<ServerPlayer, WithDim<Vec3>> lastPosition = new WeakHashMap<>();
     
     public ServerTeleportationManager() {
         IPGlobal.postServerTickSignal.connectWithWeakRef(this, ServerTeleportationManager::tick);
@@ -78,7 +73,7 @@ public class ServerTeleportationManager {
     }
     
     private void tick() {
-        teleportingEntities = new HashSet<>();
+        teleportingEntities.clear();
         long tickTimeNow = McHelper.getServerGameTime();
         if (tickTimeNow % 30 == 7) {
             for (ServerPlayer player : McHelper.getRawPlayerList()) {
@@ -90,7 +85,7 @@ public class ServerTeleportationManager {
     }
     
     public static boolean shouldEntityTeleport(Portal portal, Entity entity) {
-        if (entity.level != portal.level) {return false;}
+        if (entity.level() != portal.level()) {return false;}
         if (!portal.canTeleportEntity(entity)) {return false;}
         Vec3 lastEyePos = entity.getEyePosition(0);
         Vec3 nextEyePos = entity.getEyePosition(1);
@@ -123,6 +118,11 @@ public class ServerTeleportationManager {
             return;
         }
         //a new born entity may have last tick pos 0 0 0
+        if (entity.xo == 0 && entity.yo == 0 && entity.zo == 0) {
+            LOGGER.warn("Trying to teleport a fresh new entity {}", entity);
+            return;
+        }
+        
         double motion = McHelper.lastTickPosOf(entity).distanceToSqr(entity.position());
         if (motion > 20) {
             return;
@@ -139,7 +139,7 @@ public class ServerTeleportationManager {
     }
     
     private static Stream<Entity> getEntitiesToTeleport(Portal portal) {
-        return portal.level.getEntitiesOfClass(
+        return portal.level().getEntitiesOfClass(
             Entity.class,
             portal.getBoundingBox().inflate(2),
             e -> true
@@ -161,8 +161,6 @@ public class ServerTeleportationManager {
             return;
         }
         
-        recordLastPosition(player);
-        
         Portal portal = findPortal(dimensionBefore, portalId);
         
         lastTeleportGameTime.put(player, McHelper.getServerGameTime());
@@ -180,6 +178,8 @@ public class ServerTeleportationManager {
             
             ResourceKey<Level> dimensionTo = portal.dimensionTo;
             Vec3 newEyePos = portal.transformPoint(oldEyePos);
+            
+            recordLastPosition(player, dimensionBefore, oldFeetPos);
             
             teleportPlayer(player, dimensionTo, newEyePos);
             
@@ -199,11 +199,11 @@ public class ServerTeleportationManager {
             Helper.err(String.format(
                 "Player cannot teleport through portal %s %s %s %s",
                 player.getName().getContents(),
-                player.level.dimension(),
+                player.level().dimension(),
                 player.position(),
                 portal
             ));
-            teleportEntityGeneral(player, player.position(), ((ServerLevel) player.level));
+            teleportEntityGeneral(player, player.position(), ((ServerLevel) player.level()));
             PehkuiInterface.invoker.setBaseScale(player, PehkuiInterface.invoker.getBaseScale(player));
             GravityChangerInterface.invoker.setGravityDirectionServer(
                 player, GravityChangerInterface.invoker.getGravityDirection(player)
@@ -229,10 +229,9 @@ public class ServerTeleportationManager {
         return null;
     }
     
-    public void recordLastPosition(ServerPlayer player) {
+    public void recordLastPosition(ServerPlayer player, ResourceKey<Level> dim, Vec3 pos) {
         lastPosition.put(
-            player,
-            new Tuple<>(player.level.dimension(), player.position())
+            player, new WithDim<>(dim, pos)
         );
     }
     
@@ -251,7 +250,7 @@ public class ServerTeleportationManager {
         }
         
         return portal.canTeleportEntity(player)
-            && player.level.dimension() == dimensionBefore
+            && player.level().dimension() == dimensionBefore
             && player.position().distanceToSqr(posBefore) < 256
             && portal.getDistanceToPlane(posBefore) < 20;
     }
@@ -262,7 +261,7 @@ public class ServerTeleportationManager {
         Vec3 pos
     ) {
         Vec3 playerPos = player.position();
-        if (player.level.dimension() == dimension) {
+        if (player.level().dimension() == dimension) {
             if (playerPos.distanceToSqr(pos) < 256) {
                 return true;
             }
@@ -290,12 +289,10 @@ public class ServerTeleportationManager {
     ) {
         MiscHelper.getServer().getProfiler().push("portal_teleport");
         
-        ServerLevel fromWorld = (ServerLevel) player.level;
+        ServerLevel fromWorld = (ServerLevel) player.level();
         ServerLevel toWorld = MiscHelper.getServer().getLevel(dimensionTo);
         
-        NewChunkTrackingGraph.addAdditionalDirectLoadingTickets(player);
-        
-        if (player.level.dimension() == dimensionTo) {
+        if (player.level().dimension() == dimensionTo) {
             McHelper.setEyePos(player, newEyePos, newEyePos);
             McHelper.updateBoundingBox(player);
         }
@@ -306,7 +303,7 @@ public class ServerTeleportationManager {
         
         McHelper.adjustVehicle(player);
         player.connection.resetPosition();
-        
+
 //        CollisionHelper.updateCollidingPortalAfterTeleportation(
 //            player, newEyePos, newEyePos, 0
 //        );
@@ -314,31 +311,11 @@ public class ServerTeleportationManager {
         MiscHelper.getServer().getProfiler().pop();
     }
     
-    // TODO remove in 1.20
-    @Deprecated
-    public void forceMovePlayer(
-        ServerPlayer player,
-        ResourceKey<Level> dimensionTo,
-        Vec3 newPos
-    ) {
-        forceTeleportPlayer(player, dimensionTo, newPos);
-    }
-    
-    // TODO remove in 1.20
-    @Deprecated
-    public void invokeTpmeCommand(
-        ServerPlayer player,
-        ResourceKey<Level> dimensionTo,
-        Vec3 newPos
-    ) {
-        forceTeleportPlayer(player, dimensionTo, newPos);
-    }
-
     public void forceTeleportPlayer(ServerPlayer player, ResourceKey<Level> dimensionTo, Vec3 newPos) {
-        ServerLevel fromWorld = (ServerLevel) player.level;
+        ServerLevel fromWorld = (ServerLevel) player.level();
         ServerLevel toWorld = MiscHelper.getServer().getLevel(dimensionTo);
         
-        if (player.level.dimension() == dimensionTo) {
+        if (player.level().dimension() == dimensionTo) {
             player.setPos(newPos.x, newPos.y, newPos.z);
         }
         else {
@@ -380,28 +357,28 @@ public class ServerTeleportationManager {
         Vec3 oldPos = player.position();
         
         fromWorld.removePlayerImmediately(player, Entity.RemovalReason.CHANGED_DIMENSION);
-        ((IEEntity) player).portal_unsetRemoved();
+        ((IEEntity) player).ip_unsetRemoved();
         
         McHelper.setEyePos(player, newEyePos, newEyePos);
         McHelper.updateBoundingBox(player);
         
-        player.setLevel(toWorld);
-        player.reviveCaps(); // TODO @Nick1st Is this the right way to fix forge caps?
-
+        player.setServerLevel(toWorld);
+        
         // adds the player
         toWorld.addDuringPortalTeleport(player);
         
         if (vehicle != null) {
-            Vec3 vehiclePos = new Vec3(
-                newEyePos.x,
-                McHelper.getVehicleY(vehicle, player),
-                newEyePos.z
-            );
-            changeEntityDimension(
+            Vec3 offset = McHelper.getVehicleOffsetFromPassenger(vehicle, player);
+            Vec3 vehiclePos = player.position().add(offset);
+            vehicle = teleportVehicleAcrossDimensions(
                 vehicle,
                 toWorld.dimension(),
-                vehiclePos.add(McHelper.getEyeOffset(vehicle)),
-                false
+                vehiclePos.add(McHelper.getEyeOffset(vehicle))
+            );
+            McHelper.setPosAndLastTickPos(
+                vehicle,
+                player.position().add(offset),
+                McHelper.lastTickPosOf(player).add(offset)
             );
             ((IEServerPlayerEntity) player).startRidingWithoutTeleportRequest(vehicle);
             McHelper.adjustVehicle(player);
@@ -424,29 +401,22 @@ public class ServerTeleportationManager {
         
         //update advancements
         ((IEServerPlayerEntity) player).portal_worldChanged(fromWorld, oldPos);
-
-        /*##################################################################################################
-        ##                                         Forge specific start                                   ##
-        ##################################################################################################*/
-
-        // fire forge event
-        Helper.dbg("Forge Event PlayerEvent.PlayerChangedDimensionEvent fired");
-        ForgeEventFactory.firePlayerChangedDimensionEvent(player, fromWorld.dimension(), toWorld.dimension());
-
-        /*##################################################################################################
-        ##                                          Forge specific end                                    ##
-        ##################################################################################################*/
     }
     
     public static void sendPositionConfirmMessage(ServerPlayer player) {
-        IPMessage.sendToPlayer(new Dim_Confirm(player.level.dimension(), player.position()), player);
+        Packet packet = IPNetworking.createStcDimensionConfirm(
+            player.level().dimension(),
+            player.position()
+        );
+        
+        player.connection.send(packet);
     }
     
     private void manageGlobalPortalTeleportation() {
         for (ServerLevel world : MiscHelper.getServer().getAllLevels()) {
             for (Entity entity : world.getAllEntities()) {
                 if (!(entity instanceof ServerPlayer)) {
-                    Portal collidingPortal = ((IEEntity) entity).getCollidingPortal();
+                    Portal collidingPortal = ((IEEntity) entity).ip_getCollidingPortal();
                     
                     if (collidingPortal != null && collidingPortal.getIsGlobal()) {
                         if (shouldEntityTeleport(collidingPortal, entity)) {
@@ -478,7 +448,7 @@ public class ServerTeleportationManager {
         }
     }
     
-    public boolean isTeleporting(ServerPlayer entity) {
+    public boolean isTeleporting(Entity entity) {
         return teleportingEntities.contains(entity);
     }
     
@@ -492,8 +462,8 @@ public class ServerTeleportationManager {
             return;
         }
         
-        if (entity.level != portal.level) {
-            Helper.err(String.format("Cannot teleport %s from %s through %s", entity, entity.level.dimension(), portal));
+        if (entity.level() != portal.level()) {
+            Helper.err(String.format("Cannot teleport %s from %s through %s", entity, entity.level().dimension(), portal));
             return;
         }
         
@@ -519,9 +489,9 @@ public class ServerTeleportationManager {
         
         Vec3 newEyePos = getRegularEntityTeleportedEyePos(entity, portal);
         
-        portal.transformVelocity(entity);
+        TeleportationUtil.transformEntityVelocity(portal, entity, TeleportationUtil.PortalPointVelocity.zero);
         
-        if (portal.dimensionTo != entity.level.dimension()) {
+        if (portal.dimensionTo != entity.level().dimension()) {
             entity = changeEntityDimension(entity, portal.dimensionTo, newEyePos, true);
             
             Entity newEntity = entity;
@@ -543,7 +513,7 @@ public class ServerTeleportationManager {
             entity,
             McRemoteProcedureCall.createPacketToSendToClient(
                 "qouteall.imm_ptl.core.teleportation.ClientTeleportationManager.RemoteCallables.updateEntityPos",
-                entity.level.dimension(),
+                entity.level().dimension(),
                 entity.getId(),
                 entity.position()
             )
@@ -597,7 +567,7 @@ public class ServerTeleportationManager {
             return entity;
         }
         
-        ServerLevel fromWorld = (ServerLevel) entity.level;
+        ServerLevel fromWorld = (ServerLevel) entity.level();
         ServerLevel toWorld = MiscHelper.getServer().getLevel(toDimension);
         entity.unRide();
         
@@ -610,13 +580,14 @@ public class ServerTeleportationManager {
             }
             
             newEntity.restoreFrom(oldEntity);
+            newEntity.setId(oldEntity.getId());
             McHelper.setEyePos(newEntity, newEyePos, newEyePos);
             McHelper.updateBoundingBox(newEntity);
             newEntity.setYHeadRot(oldEntity.getYHeadRot());
             
             // TODO check minecart item duplication
             oldEntity.remove(Entity.RemovalReason.CHANGED_DIMENSION);
-            ((IEEntity) oldEntity).portal_unsetRemoved();
+            ((IEEntity) oldEntity).ip_unsetRemoved();
             
             toWorld.addDuringTeleport(newEntity);
             
@@ -624,19 +595,49 @@ public class ServerTeleportationManager {
         }
         else {
             entity.remove(Entity.RemovalReason.CHANGED_DIMENSION);
-            ((IEEntity) entity).portal_unsetRemoved();
+            ((IEEntity) entity).ip_unsetRemoved();
             
             McHelper.setEyePos(entity, newEyePos, newEyePos);
             McHelper.updateBoundingBox(entity);
             
-            entity.level = toWorld;
+            ((IEEntity) entity).ip_setWorld(toWorld);
             
             toWorld.addDuringTeleport(entity);
             
+            Validate.isTrue(!entity.isRemoved());
+            
             return entity;
         }
+    }
+    
+    public Entity teleportVehicleAcrossDimensions(
+        Entity entity,
+        ResourceKey<Level> toDimension,
+        Vec3 newEyePos
+    ) {
+        // avoid sending the remove entity packet
+        teleportingEntities.add(entity);
         
+        ServerLevel fromWorld = (ServerLevel) entity.level();
+        ServerLevel toWorld = MiscHelper.getServer().getLevel(toDimension);
         
+        Entity oldEntity = entity;
+        Entity newEntity;
+        newEntity = entity.getType().create(toWorld);
+        Validate.isTrue(newEntity != null);
+        
+        newEntity.restoreFrom(oldEntity);
+        newEntity.setId(oldEntity.getId());
+        McHelper.setEyePos(newEntity, newEyePos, newEyePos);
+        McHelper.updateBoundingBox(newEntity);
+        newEntity.setYHeadRot(oldEntity.getYHeadRot());
+        
+        oldEntity.remove(Entity.RemovalReason.CHANGED_DIMENSION);
+        ((IEEntity) oldEntity).ip_unsetRemoved();
+        
+        toWorld.addDuringTeleport(newEntity);
+        
+        return newEntity;
     }
     
     private boolean doesEntityClusterContainPlayer(Entity entity) {
@@ -665,7 +666,7 @@ public class ServerTeleportationManager {
         ServerboundMovePlayerPacket packet,
         ResourceKey<Level> dimension
     ) {
-        if (player.level.dimension() == dimension) {
+        if (player.level().dimension() == dimension) {
             return;
         }
         if (player.getRemovalReason() != null) {
@@ -676,16 +677,15 @@ public class ServerTeleportationManager {
         double z = packet.getZ(player.getZ());
         Vec3 newPos = new Vec3(x, y, z);
         if (canPlayerReachPos(player, dimension, newPos)) {
-            recordLastPosition(player);
             forceTeleportPlayer(player, dimension, newPos);
-            limitedLogger.log(String.format("accepted dubious move packet %s %s %s %s %s %s %s",
-                player.level.dimension().location(), x, y, z, player.getX(), player.getY(), player.getZ()
-            ));
+            limitedLogger.lInfo(LOGGER, "accepted dubious move packet {} {} {} {} {} {} {}",
+                player.level().dimension().location(), x, y, z, player.getX(), player.getY(), player.getZ()
+            );
         }
         else {
-            limitedLogger.log(String.format("ignored dubious move packet %s %s %s %s %s %s %s",
-                player.level.dimension().location(), x, y, z, player.getX(), player.getY(), player.getZ()
-            ));
+            limitedLogger.lInfo(LOGGER, "ignored dubious move packet {} {} {} {} {} {} {}",
+                player.level().dimension().location(), x, y, z, player.getX(), player.getY(), player.getZ()
+            );
         }
     }
     
@@ -700,10 +700,11 @@ public class ServerTeleportationManager {
         }
     }
     
+    @SuppressWarnings("unchecked")
     public static <E extends Entity> E teleportRegularEntityTo(
         E entity, ResourceKey<Level> targetDim, Vec3 targetPos
     ) {
-        if (entity.level.dimension() == targetDim) {
+        if (entity.level().dimension() == targetDim) {
             entity.moveTo(
                 targetPos.x,
                 targetPos.y,
@@ -731,7 +732,7 @@ public class ServerTeleportationManager {
     ) {
         List<Mob> chasers = McHelper.findEntitiesRough(
             Mob.class,
-            player.level,
+            player.level(),
             player.position(),
             1,
             e -> e.getTarget() == player
@@ -776,7 +777,7 @@ public class ServerTeleportationManager {
                 else {
                     @Nullable
                     Path path = chaser.getNavigation().createPath(
-                        new BlockPos(targetPos), 0
+                        BlockPos.containing(targetPos), 0
                     );
                     chaser.getNavigation().moveTo(path, 1);
                 }
@@ -789,7 +790,7 @@ public class ServerTeleportationManager {
     private void evacuatePlayersFromDimension(ResourceKey<Level> dim) {
         PlayerList playerList = MiscHelper.getServer().getPlayerList();
         for (ServerPlayer player : playerList.getPlayers()) {
-            if (player.level.dimension() == dim) {
+            if (player.level().dimension() == dim) {
                 ServerLevel overWorld = McHelper.getOverWorldOnServer();
                 BlockPos spawnPos = overWorld.getSharedSpawnPos();
                 

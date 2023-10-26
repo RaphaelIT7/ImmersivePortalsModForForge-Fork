@@ -26,7 +26,7 @@ public class BorderBarrierFiller {
     public static void onCommandExecuted(
         ServerPlayer player
     ) {
-        ServerLevel world = (ServerLevel) player.level;
+        ServerLevel world = (ServerLevel) player.level();
         Vec3 playerPos = player.position();
         
         List<WorldWrappingPortal.WrappingZone> wrappingZones =
@@ -48,7 +48,7 @@ public class BorderBarrierFiller {
         ServerPlayer player,
         int zoneId
     ) {
-        ServerLevel world = (ServerLevel) player.level;
+        ServerLevel world = (ServerLevel) player.level();
         
         List<WorldWrappingPortal.WrappingZone> wrappingZones =
             WorldWrappingPortal.getWrappingZones(world);
@@ -125,8 +125,9 @@ public class BorderBarrierFiller {
         
         BlockPos size = borderBox.getSize();
         int totalColumns = size.getX() * 2 + size.getZ() * 2;
-        
-        int worldHeight = world.getHeight();
+    
+        int minY = McHelper.getMinY(world);
+        int maxYEx = McHelper.getMaxYExclusive(world);
         
         ThreadedLevelLightEngine lightingProvider = world.getChunkSource().getLightEngine();
         
@@ -134,7 +135,7 @@ public class BorderBarrierFiller {
             stream,
             columnPos -> {
                 ChunkAccess chunk = world.getChunk(columnPos);
-                for (int y = 0; y < worldHeight; y++) {
+                for (int y = minY; y < maxYEx; y++) {
                     temp1.set(columnPos.getX(), y, columnPos.getZ());
                     chunk.setBlockState(temp1, Blocks.AIR.defaultBlockState(), false);
                     lightingProvider.checkBlock(temp1);

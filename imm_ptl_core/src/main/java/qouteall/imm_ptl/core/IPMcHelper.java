@@ -1,11 +1,15 @@
 package qouteall.imm_ptl.core;
 
 import com.mojang.blaze3d.platform.GlUtil;
+import io.netty.buffer.Unpooled;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.protocol.Packet;
 import net.minecraft.util.Tuple;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ClipContext;
@@ -52,7 +56,7 @@ public class IPMcHelper {
     public static List<Portal> getNearbyPortalList(
         Entity center, double range, Predicate<Portal> predicate
     ) {
-        return getNearbyPortalList(center.level, center.position(), range, predicate);
+        return getNearbyPortalList(center.level(), center.position(), range, predicate);
     }
     
     // include global portals
@@ -70,7 +74,7 @@ public class IPMcHelper {
     
     // includes global portals
     public static Stream<Portal> getNearbyPortals(Entity center, double range) {
-        return getNearbyPortals(center.level, center.position(), range);
+        return getNearbyPortals(center.level(), center.position(), range);
     }
     
     // includes global portals
@@ -82,7 +86,7 @@ public class IPMcHelper {
         Level world, Vec3 pos, int range, Consumer<Portal> func
     ) {
         List<Portal> globalPortals = GlobalPortalStorage.getGlobalPortals(world);
-    
+        
         for (Portal globalPortal : globalPortals) {
             if (globalPortal.getDistanceToNearestPointInPortal(pos) < range * 2) {
                 func.accept(globalPortal);
@@ -203,7 +207,7 @@ public class IPMcHelper {
                 BlockHitResult.miss(
                     end,
                     Direction.getNearest(diff.x, diff.y, diff.z),
-                    new BlockPos(end)
+                    BlockPos.containing(end)
                 ),
                 portals
             );
@@ -281,26 +285,51 @@ public class IPMcHelper {
         return hitResult == null || hitResult.getType() == HitResult.Type.MISS;
     }
     
-    public static Component getDisableWarningText() {
-        return Component.literal(" ").append(
-            Component.translatable("imm_ptl.disable_warning").withStyle(
-                style -> style.withClickEvent(new ClickEvent(
-                    ClickEvent.Action.RUN_COMMAND, "/imm_ptl_client_debug disable_warning"
-                )).withUnderlined(true)
-            ));
+    public static MutableComponent getTextWithCommand(
+        MutableComponent component,
+        String command
+    ) {
+        return component.withStyle(
+            style -> style.withClickEvent(new ClickEvent(
+                ClickEvent.Action.RUN_COMMAND,
+                command
+            )).withUnderlined(true)
+        );
+    }
+    
+    public static Component getDisableWarningText(String warningKey) {
+        return Component.literal(" ").append(getTextWithCommand(
+            Component.translatable("imm_ptl.disable_warning"),
+            "/imm_ptl_client_debug disable_warning_for \"" + warningKey + "\""
+        ));
     }
     
     public static Component getDisableUpdateCheckText() {
-        return Component.literal(" ").append(
-            Component.translatable("imm_ptl.disable_update_check").withStyle(
-                style -> style.withClickEvent(new ClickEvent(
-                    ClickEvent.Action.RUN_COMMAND, "/imm_ptl_client_debug disable_update_check"
-                )).withUnderlined(true)
-            ));
+        return Component.literal(" ").append(getTextWithCommand(
+            Component.translatable("imm_ptl.disable_update_check"),
+            "/imm_ptl_client_debug disable_update_check"
+        ));
     }
-
+    
     @OnlyIn(Dist.CLIENT)
     public static boolean isNvidiaVideocard() {
         return GlUtil.getVendor().toLowerCase().contains("nvidia");
+    }
+    
+    public static FriendlyByteBuf bytesToBuf(byte[] packetBytes) {
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.wrappedBuffer(packetBytes));
+        return buf;
+    }
+    
+    public static byte[] bufToBytes(FriendlyByteBuf buf) {
+        byte[] packetBytes = new byte[buf.readableBytes()];
+        buf.readBytes(packetBytes);
+        return packetBytes;
+    }
+    
+    public static byte[] packetToBytes(Packet<?> packet) {
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        packet.write(buf);
+        return bufToBytes(buf);
     }
 }

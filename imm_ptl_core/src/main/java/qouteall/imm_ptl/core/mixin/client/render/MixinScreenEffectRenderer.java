@@ -9,9 +9,9 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import qouteall.imm_ptl.core.IPCGlobal;
 import qouteall.imm_ptl.core.ducks.IEEntity;
 import qouteall.imm_ptl.core.render.context_management.PortalRendering;
+import qouteall.imm_ptl.core.teleportation.ClientTeleportationManager;
 
 @Mixin(ScreenEffectRenderer.class)
 public class MixinScreenEffectRenderer {
@@ -31,11 +31,11 @@ public class MixinScreenEffectRenderer {
         }
         LocalPlayer player = Minecraft.getInstance().player;
         if (player != null) {
-            if (((IEEntity) player).getCollidingPortal() != null) {
+            if (((IEEntity) player).ip_getCollidingPortal() != null) {
                 ci.cancel();
             }
         }
-        if (IPCGlobal.clientTeleportationManager.isTeleportingFrequently()) {
+        if (ClientTeleportationManager.isTeleportingFrequently()) {
             ci.cancel();
         }
     }

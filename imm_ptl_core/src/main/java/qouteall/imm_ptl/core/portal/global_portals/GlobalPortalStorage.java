@@ -6,6 +6,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
+import net.minecraft.network.protocol.Packet;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -17,24 +18,21 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.apache.commons.lang3.Validate;
+import org.jetbrains.annotations.NotNull;
 import qouteall.imm_ptl.core.CHelper;
 import qouteall.imm_ptl.core.ClientWorldLoader;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.ducks.IEClientWorld;
+import qouteall.imm_ptl.core.network.IPNetworking;
 import qouteall.imm_ptl.core.platform_specific.O_O;
-import qouteall.imm_ptl.core.platform_specific.forge.networking.GlobalPortalUpdate;
-import qouteall.imm_ptl.core.platform_specific.forge.networking.IPMessage;
 import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.MiscHelper;
-import qouteall.q_misc_util.forge.events.ServerDimensionDynamicUpdateEvent;
+import qouteall.q_misc_util.api.DimensionAPI;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -67,29 +65,18 @@ public class GlobalPortalStorage extends SavedData {
                 get(world).onServerClose();
             }
         });
-
-        MinecraftForge.EVENT_BUS.register(GlobalPortalStorage.class);
-
-//        DimensionAPI.serverDimensionDynamicUpdateEvent.register(dims -> { //TODO Reimplement this !DONE
-//            for (ServerLevel world : MiscHelper.getServer().getAllLevels()) {
-//                GlobalPortalStorage gps = get(world);
-//                gps.clearAbnormalPortals();
-//                gps.syncToAllPlayers();
-//            }
-//        });
-
-        if (!O_O.isDedicatedServer()) {
-            initClient();
-        }
-    }
-
-    @SubscribeEvent
-    public static void serverDimensionDynamicUpdate(ServerDimensionDynamicUpdateEvent event) {
-        for (ServerLevel world : MiscHelper.getServer().getAllLevels()) {
+        
+        /*DimensionAPI.serverDimensionDynamicUpdateEvent.register(dims -> {
+            for (ServerLevel world : MiscHelper.getServer().getAllLevels()) {
                 GlobalPortalStorage gps = get(world);
                 gps.clearAbnormalPortals();
                 gps.syncToAllPlayers();
             }
+        });*/
+
+        if (!O_O.isDedicatedServer()) {
+            initClient();
+        }
     }
     
     public static GlobalPortalStorage get(
@@ -135,7 +122,11 @@ public class GlobalPortalStorage extends SavedData {
             world -> {
                 GlobalPortalStorage storage = get(world);
                 if (!storage.data.isEmpty()) {
-                    IPMessage.sendToPlayer(new GlobalPortalUpdate(storage), player);
+                    player.connection.send(
+                        IPNetworking.createGlobalPortalUpdate(
+                            storage
+                        )
+                    );
                 }
             }
         );
@@ -179,9 +170,9 @@ public class GlobalPortalStorage extends SavedData {
     }
     
     private void syncToAllPlayers() {
-        GlobalPortalUpdate gpu = new GlobalPortalUpdate(this);
+        Packet packet = IPNetworking.createGlobalPortalUpdate(this);
         McHelper.getCopiedPlayerList().forEach(
-                player -> IPMessage.sendToPlayer(gpu, player)
+            player -> player.connection.send(packet)
         );
     }
     
@@ -259,7 +250,7 @@ public class GlobalPortalStorage extends SavedData {
         Validate.notNull(currWorld);
         
         for (Portal portal : data) {
-            Validate.isTrue(portal.level == currWorld);
+            Validate.isTrue(portal.level() == currWorld);
             CompoundTag portalTag = new CompoundTag();
             portal.saveWithoutId(portalTag);
             portalTag.putString(
@@ -336,7 +327,7 @@ public class GlobalPortalStorage extends SavedData {
     
     public static void convertNormalPortalIntoGlobalPortal(Portal portal) {
         Validate.isTrue(!portal.getIsGlobal());
-        Validate.isTrue(!portal.level.isClientSide());
+        Validate.isTrue(!portal.level().isClientSide());
         
         //global portal can only be square
         portal.specialShape = null;
@@ -345,14 +336,14 @@ public class GlobalPortalStorage extends SavedData {
         
         Portal newPortal = McHelper.copyEntity(portal);
         
-        get(((ServerLevel) portal.level)).addPortal(newPortal);
+        get(((ServerLevel) portal.level())).addPortal(newPortal);
     }
     
     public static void convertGlobalPortalIntoNormalPortal(Portal portal) {
         Validate.isTrue(portal.getIsGlobal());
-        Validate.isTrue(!portal.level.isClientSide());
+        Validate.isTrue(!portal.level().isClientSide());
         
-        get(((ServerLevel) portal.level)).removePortal(portal);
+        get(((ServerLevel) portal.level())).removePortal(portal);
         
         Portal newPortal = McHelper.copyEntity(portal);
         
@@ -365,7 +356,7 @@ public class GlobalPortalStorage extends SavedData {
         }
     }
     
-    @Nonnull
+    @NotNull
     public static List<Portal> getGlobalPortals(Level world) {
         List<Portal> result;
         if (world.isClientSide()) {

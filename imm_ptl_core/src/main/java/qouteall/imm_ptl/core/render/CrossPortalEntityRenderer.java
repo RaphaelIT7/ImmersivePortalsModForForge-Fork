@@ -1,8 +1,6 @@
 package qouteall.imm_ptl.core.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
@@ -13,11 +11,15 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import org.apache.commons.lang3.Validate;
 import qouteall.imm_ptl.core.CHelper;
 import qouteall.imm_ptl.core.ClientWorldLoader;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.McHelper;
+import qouteall.imm_ptl.core.collision.PortalCollisionEntry;
+import qouteall.imm_ptl.core.collision.PortalCollisionHandler;
 import qouteall.imm_ptl.core.compat.iris_compatibility.IrisInterface;
 import qouteall.imm_ptl.core.ducks.IEEntity;
 import qouteall.imm_ptl.core.ducks.IEWorldRenderer;
@@ -56,10 +58,10 @@ public class CrossPortalEntityRenderer {
     }
     
     private static void onClientTick() {
-        collidedEntities.entrySet().removeIf(entry ->
-            entry.getKey().isRemoved() ||
-                ((IEEntity) entry.getKey()).getCollidingPortal() == null
-        );
+        collidedEntities.entrySet().removeIf(entry -> {
+            Entity entity = entry.getKey();
+            return entity.isRemoved() || !((IEEntity) entity).ip_isCollidingWithPortal();
+        });
     }
     
     public static void onEntityTickClient(Entity entity) {
@@ -67,8 +69,7 @@ public class CrossPortalEntityRenderer {
             return;
         }
         
-        Portal collidingPortal = ((IEEntity) entity).getCollidingPortal();
-        if (collidingPortal != null) {
+        if (((IEEntity) entity).ip_isCollidingWithPortal()) {
             collidedEntities.put(entity, null);
         }
     }
@@ -78,7 +79,8 @@ public class CrossPortalEntityRenderer {
         
         if (PortalRendering.isRendering()) {
             FrontClipping.setupInnerClipping(
-                PortalRendering.getRenderingPortal(), false, matrixStack
+                PortalRendering.getActiveClippingPlane(),
+                matrixStack.last().pose(), 0
             );
         }
     }
@@ -109,16 +111,18 @@ public class CrossPortalEntityRenderer {
         }
         if (!PortalRendering.isRendering()) {
             if (collidedEntities.containsKey(entity)) {
-                Portal collidingPortal = ((IEEntity) entity).getCollidingPortal();
-                if (collidingPortal == null) {
-                    //Helper.err("Colliding Portal Record Invalid " + entity);
-                    return;
+                PortalCollisionHandler collisionHandler = ((IEEntity) entity).ip_getPortalCollisionHandler();
+                
+                if (collisionHandler != null) {
+                    for (PortalCollisionEntry e : collisionHandler.portalCollisions) {
+                        Portal collidingPortal = e.portal;
+                        
+                        //draw already built triangles
+                        client.renderBuffers().bufferSource().endBatch();
+                        
+                        FrontClipping.setupOuterClipping(matrixStack, collidingPortal);
+                    }
                 }
-                
-                //draw already built triangles
-                client.renderBuffers().bufferSource().endBatch();
-                
-                FrontClipping.setupOuterClipping(matrixStack, collidingPortal);
             }
         }
     }
@@ -142,21 +146,24 @@ public class CrossPortalEntityRenderer {
         if (!isCrossPortalRenderingEnabled()) {
             return;
         }
-        collidedEntities.keySet().forEach(entity -> {
-            Portal collidingPortal = ((IEEntity) entity).getCollidingPortal();
-            if (collidingPortal == null) {
-                //Helper.err("Colliding Portal Record Invalid " + entity);
-                return;
+        
+        ResourceKey<Level> clientDim = client.level.dimension();
+        
+        for (Entity entity : collidedEntities.keySet()) {
+            PortalCollisionHandler collisionHandler = ((IEEntity) entity).ip_getPortalCollisionHandler();
+            
+            if (collisionHandler != null) {
+                for (PortalCollisionEntry e : collisionHandler.portalCollisions) {
+                    Portal collidingPortal = e.portal;
+                    if (!(collidingPortal instanceof Mirror)) {
+                        ResourceKey<Level> projectionDimension = collidingPortal.dimensionTo;
+                        if (clientDim == projectionDimension) {
+                            renderProjectedEntity(entity, collidingPortal, matrixStack);
+                        }
+                    }
+                }
             }
-            if (collidingPortal instanceof Mirror) {
-                //no need to render entity projection for mirrors
-                return;
-            }
-            ResourceKey<Level> projectionDimension = collidingPortal.dimensionTo;
-            if (client.level.dimension() == projectionDimension) {
-                renderProjectedEntity(entity, collidingPortal, matrixStack);
-            }
-        });
+        }
     }
     
     public static boolean hasIntersection(
@@ -196,7 +203,9 @@ public class CrossPortalEntityRenderer {
             // don't draw the existing triangles with culling enabled
             client.renderBuffers().bufferSource().endBatch();
             
-            FrontClipping.setupInnerClipping(collidingPortal, false, matrixStack);
+            FrontClipping.setupInnerClipping(
+                collidingPortal.getInnerClipping(), matrixStack.last().pose(), 0
+            );
             renderEntity(entity, collidingPortal, matrixStack);
             FrontClipping.disableClipping();
         }
@@ -211,11 +220,13 @@ public class CrossPortalEntityRenderer {
         
         ClientLevel newWorld = ClientWorldLoader.getWorld(transformingPortal.dimensionTo);
         
-        Vec3 oldEyePos = McHelper.getEyePos(entity);
-        Vec3 oldLastTickEyePos = McHelper.getLastTickEyePos(entity);
-        Level oldWorld = entity.level;
+        Vec3 entityPos = entity.position();
+        Vec3 entityEyePos = McHelper.getEyePos(entity);
+        Vec3 entityLastTickPos = McHelper.lastTickPosOf(entity);
+        Vec3 entityLastTickEyePos = McHelper.getLastTickEyePos(entity);
+        Level oldWorld = entity.level();
         
-        Vec3 newEyePos = transformingPortal.transformPoint(oldEyePos);
+        Vec3 newEyePos = transformingPortal.transformPoint(entityEyePos);
         
         if (PortalRendering.isRendering()) {
             PortalLike renderingPortal = PortalRendering.getRenderingPortal();
@@ -242,7 +253,7 @@ public class CrossPortalEntityRenderer {
             if (client.options.getCameraType().isFirstPerson()) {
                 //avoid rendering player too near and block view
                 double dis = newEyePos.distanceTo(cameraPos);
-                double valve = 0.5 + McHelper.lastTickPosOf(entity).distanceTo(entity.position());
+                double valve = 0.5 + entityLastTickPos.distanceTo(entityPos);
                 if (transformingPortal.scaling > 1) {
                     valve *= transformingPortal.scaling;
                 }
@@ -258,49 +269,56 @@ public class CrossPortalEntityRenderer {
             }
         }
         
-        McHelper.setEyePos(
-            entity,
-            newEyePos,
-            transformingPortal.transformPoint(oldLastTickEyePos)
-        );
-        
-        entity.level = newWorld;
-        
         isRenderingEntityProjection = true;
         matrixStack.pushPose();
-        setupEntityProjectionRenderingTransformation(
-            transformingPortal, entity, matrixStack
-        );
-        
-        MultiBufferSource.BufferSource consumers = client.renderBuffers().bufferSource();
-        ((IEWorldRenderer) client.levelRenderer).ip_myRenderEntity(
-            entity,
-            cameraPos.x, cameraPos.y, cameraPos.z,
-            RenderStates.tickDelta, matrixStack,
-            consumers
-        );
-        //immediately invoke draw call
-        consumers.endBatch();
-        
-        matrixStack.popPose();
-        isRenderingEntityProjection = false;
-        
-        McHelper.setEyePos(
-            entity, oldEyePos, oldLastTickEyePos
-        );
-        entity.level = oldWorld;
+        try {
+            // we don't switch the entity position now
+            // to make the entity to render in the new position,
+            // we change the camera pos passed in
+            
+            // renderedPos = entityPos - cameraPos
+            // cameraPos = entityPos - renderedPos
+            
+            // expectedRenderedPos = newEntityPos - cameraPos
+            // newCameraPos = entityPos - expectedRenderedPos
+            //              = entityPos - newEntityPos + cameraPos
+            
+            Vec3 entityInstantPos = entityLastTickPos.lerp(entityPos, RenderStates.getPartialTick());
+            Vec3 newEntityInstantPos = transformingPortal.transformPoint(entityInstantPos);
+            Vec3 newCameraPos = entityInstantPos.subtract(newEntityInstantPos).add(cameraPos);
+            
+            setupEntityProjectionRenderingTransformation(
+                transformingPortal, matrixStack,
+                entityPos, entityLastTickPos,
+                newCameraPos
+            );
+            
+            MultiBufferSource.BufferSource consumers = client.renderBuffers().bufferSource();
+            ((IEWorldRenderer) client.levelRenderer).ip_myRenderEntity(
+                entity,
+                newCameraPos.x, newCameraPos.y, newCameraPos.z,
+                RenderStates.getPartialTick(), matrixStack,
+                consumers
+            );
+            //immediately invoke draw call
+            consumers.endBatch();
+        }
+        finally {
+            matrixStack.popPose();
+            isRenderingEntityProjection = false;
+        }
     }
     
     private static void setupEntityProjectionRenderingTransformation(
-        Portal portal, Entity entity, PoseStack matrixStack
+        Portal portal, PoseStack matrixStack,
+        Vec3 entityPos, Vec3 entityLastTickPos, Vec3 cameraPos
     ) {
         if (portal.scaling == 1.0 && portal.getRotation() == null) {
             return;
         }
         
-        Vec3 cameraPos = CHelper.getCurrentCameraPos();
-        
-        Vec3 anchor = entity.getEyePosition(RenderStates.tickDelta).subtract(cameraPos);
+        Vec3 anchor = entityLastTickPos.lerp(entityPos, RenderStates.getPartialTick())
+            .subtract(cameraPos);
         
         matrixStack.translate(anchor.x, anchor.y, anchor.z);
         
@@ -337,7 +355,7 @@ public class CrossPortalEntityRenderer {
             }
         }
         
-        if (client.level == player.level) {
+        if (client.level == player.level()) {
             return true;
         }
         
@@ -351,7 +369,7 @@ public class CrossPortalEntityRenderer {
         }
         if (PortalRendering.isRendering()) {
             PortalLike renderingPortal = PortalRendering.getRenderingPortal();
-            Portal collidingPortal = ((IEEntity) entity).getCollidingPortal();
+            Portal collidingPortal = ((IEEntity) entity).ip_getCollidingPortal();
             
             if (entity instanceof Player && !renderingPortal.getDoRenderPlayer()) {
                 return false;
@@ -372,7 +390,7 @@ public class CrossPortalEntityRenderer {
                 }
             }
             
-            return renderingPortal.isInside(
+            return renderingPortal.isOnDestinationSide(
                 getRenderingCameraPos(entity), -0.01
             );
         }
@@ -401,6 +419,6 @@ public class CrossPortalEntityRenderer {
                 McHelper.getEyeOffset(entity)
             );
         }
-        return entity.getEyePosition(RenderStates.tickDelta);
+        return entity.getEyePosition(RenderStates.getPartialTick());
     }
 }

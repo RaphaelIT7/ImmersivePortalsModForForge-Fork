@@ -14,26 +14,27 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.network.NetworkDirection;
+import qouteall.imm_ptl.core.network.IPNetworking;
 import qouteall.imm_ptl.core.platform_specific.IPRegistry;
-import qouteall.imm_ptl.core.platform_specific.forge.networking.IPMessage;
-import qouteall.imm_ptl.core.platform_specific.forge.networking.Spawn_Entity;
 import qouteall.imm_ptl.core.portal.nether_portal.BlockPortalShape;
 import qouteall.q_misc_util.my_util.IntBox;
 
 public class LoadingIndicatorEntity extends Entity {
     public static EntityType<LoadingIndicatorEntity> entityType = IPRegistry.LOADING_INDICATOR.get();
-    
+
     private static final EntityDataAccessor<Component> text = SynchedEntityData.defineId(
-        LoadingIndicatorEntity.class, EntityDataSerializers.COMPONENT
+            LoadingIndicatorEntity.class, EntityDataSerializers.COMPONENT
     );
-    
+
+
     public boolean isValid = false;
     
     public BlockPortalShape portalShape;
@@ -51,7 +52,7 @@ public class LoadingIndicatorEntity extends Entity {
     public void tick() {
         super.tick();
         
-        if (level.isClientSide()) {
+        if (level().isClientSide()) {
             tickClient();
         }
         else {
@@ -70,14 +71,14 @@ public class LoadingIndicatorEntity extends Entity {
             LocalPlayer player = Minecraft.getInstance().player;
             
             if (player != null &&
-                player.level == level &&
+                player.level() == level() &&
                 player.position().distanceToSqr(position()) < 16 * 16
             ) {
                 showMessageClient();
             }
         }
     }
-    
+
     @OnlyIn(Dist.CLIENT)
     private void addParticles() {
         int num = tickCount < 100 ? 50 : 20;
@@ -85,7 +86,7 @@ public class LoadingIndicatorEntity extends Entity {
         if (portalShape != null) {
             IntBox box = portalShape.innerAreaBox;
             BlockPos size = box.getSize();
-            RandomSource random = level.getRandom();
+            RandomSource random = level().getRandom();
             
             for (int i = 0; i < num; i++) {
                 Vec3 p = new Vec3(
@@ -98,7 +99,7 @@ public class LoadingIndicatorEntity extends Entity {
                 double vy = speedMultiplier * ((double) random.nextFloat() - 0.5D) * 0.5D;
                 double vz = speedMultiplier * ((double) random.nextFloat() - 0.5D) * 0.5D;
                 
-                level.addParticle(
+                level().addParticle(
                     ParticleTypes.PORTAL,
                     p.x, p.y, p.z,
                     vx, vy, vz
@@ -128,7 +129,7 @@ public class LoadingIndicatorEntity extends Entity {
     
     @Override
     public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return (Packet<ClientGamePacketListener>) IPMessage.INSTANCE.toVanillaPacket(new Spawn_Entity(this), NetworkDirection.PLAY_TO_CLIENT);
+        return IPNetworking.createStcSpawnEntity(this);
     }
     
     public void inform(Component str) {
@@ -142,7 +143,7 @@ public class LoadingIndicatorEntity extends Entity {
     public Component getText() {
         return getEntityData().get(text);
     }
-    
+
     @OnlyIn(Dist.CLIENT)
     private void showMessageClient() {
         Gui inGameHud = Minecraft.getInstance().gui;

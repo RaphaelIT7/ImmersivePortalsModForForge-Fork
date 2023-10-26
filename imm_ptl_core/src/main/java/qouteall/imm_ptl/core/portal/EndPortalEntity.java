@@ -1,7 +1,5 @@
 package qouteall.imm_ptl.core.portal;
 
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -18,13 +16,17 @@ import net.minecraft.world.entity.projectile.Arrow;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.dimension.end.EndDragonFight;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.ducks.IEEntity;
+import qouteall.imm_ptl.core.mixin.common.miscellaneous.IEEndDragonFight;
 import qouteall.imm_ptl.core.platform_specific.IPRegistry;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.MiscHelper;
@@ -33,10 +35,10 @@ import java.util.Objects;
 
 public class EndPortalEntity extends Portal {
     private static final Logger LOGGER = LogManager.getLogger(EndPortalEntity.class);
-
-    // call code in the outer mod
-    // TODO move end portal to the outer mod
-    public static Runnable updateDragonFightStatusFunc;
+    
+    public static final EntityType<EndPortalEntity> entityType =
+            IPRegistry.END_PORTAL.get();
+    public static final String PORTAL_TAG_VIEW_BOX = "view_box";
     
     // only used by scaled view type end portal
     private EndPortalEntity clientFakedReversePortal;
@@ -52,7 +54,8 @@ public class EndPortalEntity extends Portal {
     }
     
     public static void onEndPortalComplete(ServerLevel world, Vec3 portalCenter) {
-        if (MiscHelper.getServer().getLevel(Level.END) == null) {
+        ServerLevel endDim = MiscHelper.getServer().getLevel(Level.END);
+        if (endDim == null) {
             // there is no end dimension (custom preset can remove the end dimension)
             return;
         }
@@ -76,14 +79,19 @@ public class EndPortalEntity extends Portal {
         // for toObsidianPlatform mode, if the platform does not get generated before
         // going through portal, the player may fall into void
         ServerLevel.makeObsidianPlatform(world);
-
-        if (updateDragonFightStatusFunc != null) {
-            updateDragonFightStatusFunc.run();
+        
+        // update dragon fight info
+        EndDragonFight dragonFight = world.getDragonFight();
+        if (dragonFight == null) {
+            return;
+        }
+        if (((IEEndDragonFight) dragonFight).ip_getNeedsStateScanning()) {
+            ((IEEndDragonFight) dragonFight).ip_scanState();
         }
     }
     
     private static void generateClassicalEndPortal(ServerLevel world, Vec3 destination, Vec3 portalCenter) {
-        Portal portal = new EndPortalEntity(IPRegistry.END_PORTAL.get(), world);
+        Portal portal = new EndPortalEntity(entityType, world);
         
         portal.setPos(portalCenter.x, portalCenter.y, portalCenter.z);
         
@@ -117,14 +125,15 @@ public class EndPortalEntity extends Portal {
         
         for (Direction direction : Direction.values()) {
             Portal portal = PortalManipulation.createOrthodoxPortal(
-                IPRegistry.END_PORTAL.get(),
+                EndPortalEntity.entityType,
                 world, endWorld,
                 direction, Helper.getBoxSurface(thisSideBox, direction),
                 Helper.getBoxSurface(otherSideBox, direction).getCenter()
             );
             portal.scaling = scale;
             portal.teleportChangesScale = false;
-            portal.portalTag = "view_box";
+            portal.portalTag = PORTAL_TAG_VIEW_BOX;
+            portal.setInteractable(false);
             //creating a new entity type needs registering
             //it's easier to discriminate it by portalTag
             
@@ -136,20 +145,20 @@ public class EndPortalEntity extends Portal {
     public void tick() {
         super.tick();
         
-        if (level.isClientSide()) {
+        if (level().isClientSide()) {
             tickClient();
         }
     }
     
     @OnlyIn(Dist.CLIENT)
     private void tickClient() {
-        if (Objects.equals(portalTag, "view_box")) {
+        if (isViewBoxPortal()) {
             LocalPlayer player = Minecraft.getInstance().player;
             if (player == null) {
                 return;
             }
             if (getNormal().y > 0.5) {
-                if (((IEEntity) player).getCollidingPortal() == this) {
+                if (((IEEntity) player).ip_getCollidingPortal() == this) {
                     Vec3 cameraPosVec = player.getEyePosition(1);
                     double dist = this.getDistanceToNearestPointInPortal(cameraPosVec);
                     if (dist < 1) {
@@ -164,11 +173,6 @@ public class EndPortalEntity extends Portal {
             }
             fuseView = true;
         }
-        else if (Objects.equals(portalTag, "view_box_faked_reverse")) {
-            if (clientFakedReversePortal.isRemoved()) {
-                remove(RemovalReason.KILLED);
-            }
-        }
     }
     
     @Override
@@ -176,10 +180,10 @@ public class EndPortalEntity extends Portal {
         super.onEntityTeleportedOnServer(entity);
         
         if (shouldAddSlowFalling(entity)) {
-            int duration = 120;
+            int duration = 200;
             
-            if (Objects.equals(this.portalTag, "view_box")) {
-                duration = 200;
+            if (isViewBoxPortal()) {
+                duration = 300;
             }
             
             LivingEntity livingEntity = (LivingEntity) entity;
@@ -193,13 +197,22 @@ public class EndPortalEntity extends Portal {
         }
         
         ServerLevel endWorld = MiscHelper.getServer().getLevel(Level.END);
-
+        
         ServerLevel.makeObsidianPlatform(endWorld);
     }
     
+    private boolean isViewBoxPortal() {
+        return Objects.equals(this.portalTag, PORTAL_TAG_VIEW_BOX);
+    }
+    
+    // avoid scale box portal to transform velocity
     @Override
-    public void transformVelocity(Entity entity) {
-        // avoid scale box portal to transform velocity
+    public Vec3 transformVelocityRelativeToPortal(Vec3 originalVelocityRelativeToPortal, Entity entity) {
+        if (isViewBoxPortal()) {
+            return Vec3.ZERO;
+        }
+        
+        return super.transformVelocityRelativeToPortal(originalVelocityRelativeToPortal, entity);
     }
     
     // arrows cannot go through end portal
@@ -236,20 +249,20 @@ public class EndPortalEntity extends Portal {
     public boolean shouldLimitBoundingBox() {
         return false;
     }
-
+    
     @Override
     public void onCollidingWithEntity(Entity entity) {
         // fix https://github.com/qouteall/ImmersivePortalsMod/issues/698
         // maybe allows easier farming of obsidian
-        if (!level.isClientSide()) {
+        if (!level().isClientSide()) {
             if (entity instanceof ServerPlayer) {
                 if (IPGlobal.endPortalMode == IPGlobal.EndPortalMode.toObsidianPlatform) {
                     ServerLevel endWorld = MiscHelper.getServer().getLevel(Level.END);
-
+                    
                     ServerLevel.makeObsidianPlatform(endWorld);
                 }
             }
         }
     }
-
+    
 }

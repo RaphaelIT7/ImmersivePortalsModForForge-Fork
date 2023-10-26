@@ -25,7 +25,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.event.CreativeModeTabEvent;
+import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.IForgeRegistry;
@@ -44,9 +44,9 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class CommandStickItem extends Item {
-    
+
     private static final ResourceKey<Registry<Data>> registryRegistryKey =
-        ResourceKey.createRegistryKey(new ResourceLocation("immersive_portals:command_stick_type"));
+            ResourceKey.createRegistryKey(new ResourceLocation("immersive_portals:command_stick_type"));
 
     public static final DeferredRegister<Data> CommandStickData = DeferredRegister.create(new ResourceLocation("immersive_portals", "command_stick_type"), "imm_ptl");
 
@@ -58,7 +58,7 @@ public class CommandStickItem extends Item {
     public static final RegistryObject<Data> eradicate_portal_cluster = CommandStickData.register("eradicate_portal_cluster", () -> createData("eradicate_portal_cluster"));
     public static final RegistryObject<Data> complete_bi_way_bi_faced_portal = CommandStickData.register("complete_bi_way_bi_faced_portal", () -> createData("complete_bi_way_bi_faced_portal"));
     public static final RegistryObject<Data> complete_bi_way_portal = CommandStickData.register("complete_bi_way_portal", () -> createData("complete_bi_way_portal"));
-//    public static final RegistryObject<Data> bind_cluster = CommandStickData.register("bind_cluster", () -> createData("bind_cluster", "nbt {bindCluster:true}")); // TODO @Nick1st does this still exist?
+    //    public static final RegistryObject<Data> bind_cluster = CommandStickData.register("bind_cluster", () -> createData("bind_cluster", "nbt {bindCluster:true}")); // TODO @Nick1st does this still exist?
     public static final RegistryObject<Data> move_portal_front = CommandStickData.register("move_portal_front", () -> createData("move_portal_front", "move_portal 0.5"));
     public static final RegistryObject<Data> move_portal_back = CommandStickData.register("move_portal_back", () -> createData("move_portal_back", "move_portal -0.5"));
     public static final RegistryObject<Data> move_portal_destination_front = CommandStickData.register("move_portal_destination_front", () -> createData("move_portal_destination_front", "move_portal_destination 0.5"));
@@ -104,9 +104,9 @@ public class CommandStickItem extends Item {
         public final String command;
         public final String nameTranslationKey;
         public final List<String> descriptionTranslationKeys;
-        
+
         public Data(
-            String command, String nameTranslationKey, List<String> descriptionTranslationKeys, boolean addToMenu
+                String command, String nameTranslationKey, List<String> descriptionTranslationKeys, boolean addToMenu
         ) {
             this.command = command;
             this.nameTranslationKey = nameTranslationKey;
@@ -115,7 +115,7 @@ public class CommandStickItem extends Item {
             if (addToMenu)
                 cmd_stick_data.add(this);
         }
-        
+
         public void serialize(CompoundTag tag) {
             tag.putString("command", command);
             tag.putString("nameTranslationKey", nameTranslationKey);
@@ -125,34 +125,34 @@ public class CommandStickItem extends Item {
             }
             tag.put("descriptionTranslationKeys", listTag);
         }
-        
+
         public static Data deserialize(CompoundTag tag) {
             return new Data(
-                tag.getString("command"),
-                tag.getString("nameTranslationKey"),
-                tag.getList(
-                        "descriptionTranslationKeys",
-                        StringTag.valueOf("").getId()
-                    )
-                    .stream()
-                    .map(tag1 -> ((StringTag) tag1).getAsString())
-                    .collect(Collectors.toList()),
+                    tag.getString("command"),
+                    tag.getString("nameTranslationKey"),
+                    tag.getList(
+                                    "descriptionTranslationKeys",
+                                    StringTag.valueOf("").getId()
+                            )
+                            .stream()
+                            .map(tag1 -> ((StringTag) tag1).getAsString())
+                            .collect(Collectors.toList()),
                     false
             );
         }
     }
-    
+
     public static final MappedRegistry<Data> commandStickTypeRegistry = new MappedRegistry<>(
-        registryRegistryKey, Lifecycle.stable()
+            registryRegistryKey, Lifecycle.stable()
     );
-    
+
     public static void registerType(String id, Data data) {
         commandStickTypeRegistry.register(
-            ResourceKey.create(
-                registryRegistryKey, new ResourceLocation(id)
-            ),
-            data,
-            Lifecycle.stable()
+                ResourceKey.create(
+                        registryRegistryKey, new ResourceLocation(id)
+                ),
+                data,
+                Lifecycle.stable()
         );
     }
 
@@ -170,45 +170,45 @@ public class CommandStickItem extends Item {
     public CommandStickItem(Properties settings) {
         super(settings);
     }
-    
+
     // display enchantment glint
     @Override
     public boolean isFoil(ItemStack stack) {
         return true;
     }
-    
+
     @Override
     public InteractionResultHolder<ItemStack> use(Level world, Player player, InteractionHand hand) {
         doUse(player, player.getItemInHand(hand));
         return super.use(world, player, hand);
     }
-    
+
     private void doUse(Player player, ItemStack stack) {
-        if (player.level.isClientSide()) {
+        if (player.level().isClientSide()) {
             return;
         }
-        
+
         if (canUseCommand(player)) {
             Data data = Data.deserialize(stack.getOrCreateTag());
-            
+
             CommandSourceStack commandSource = player.createCommandSourceStack().withPermission(2);
-            
+
             Commands commandManager = MiscHelper.getServer().getCommands();
-            
+
             String command = data.command;
-            
+
             if (command.startsWith("/")) {
                 // it seems not accepting "/" in the beginning
                 command = command.substring(1);
             }
-            
+
             commandManager.performPrefixedCommand(commandSource, command);
         }
         else {
             sendMessage(player, Component.literal("No Permission"));
         }
     }
-    
+
     private static boolean canUseCommand(Player player) {
         if (IPGlobal.easeCommandStickPermission) {
             return true;// any player regardless of gamemode can use
@@ -217,23 +217,23 @@ public class CommandStickItem extends Item {
             return player.hasPermissions(2) || player.isCreative();
         }
     }
-    
+
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level world, List<Component> tooltip, TooltipFlag context) {
         super.appendHoverText(stack, world, tooltip, context);
-        
+
         Data data = Data.deserialize(stack.getOrCreateTag());
-        
+
         Iterable<String> splitCommand = Splitter.fixedLength(40).split(data.command);
-        
+
         for (String commandPortion : splitCommand) {
             tooltip.add(Component.literal(commandPortion).withStyle(ChatFormatting.GOLD));
         }
-        
+
         for (String descriptionTranslationKey : data.descriptionTranslationKeys) {
             tooltip.add(Component.translatable(descriptionTranslationKey).withStyle(ChatFormatting.AQUA));
         }
-        
+
         tooltip.add(Component.translatable("imm_ptl.command_stick").withStyle(ChatFormatting.GRAY));
     }
 
@@ -242,29 +242,29 @@ public class CommandStickItem extends Item {
         Data data = Data.deserialize(stack.getOrCreateTag());
         return data.nameTranslationKey;
     }
-    
+
     public static void sendMessage(Player player, Component message) {
         ((ServerPlayer) player).sendSystemMessage(message);
     }
-    
+
     public static void init() {
         PortalCommand.createCommandStickCommandSignal.connect((player, command) -> {
             ItemStack itemStack = new ItemStack(PeripheralModEntry.COMMAND_STICK_ITEM.get(), 1);
             Data data = new Data(
-                command,
-                command, new ArrayList<>(), false
+                    command,
+                    command, new ArrayList<>(), false
             );
             data.serialize(itemStack.getOrCreateTag());
-            
+
             player.getInventory().add(itemStack);
             player.inventoryMenu.broadcastChanges();
         });
     }
 
     @SubscribeEvent
-    public static void buildContents(CreativeModeTabEvent.BuildContents event) {
+    public static void buildContents(BuildCreativeModeTabContentsEvent event) {
         // Add to ingredients tab
-        if (event.getTab() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
+        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
             commandStickTypeRegistry.stream().forEach(data -> {
                 ItemStack stack = new ItemStack(PeripheralModEntry.COMMAND_STICK_ITEM.get());
                 data.serialize(stack.getOrCreateTag());

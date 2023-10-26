@@ -18,7 +18,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import qouteall.imm_ptl.core.IPGlobal;
-import qouteall.imm_ptl.core.platform_specific.IPRegistry;
 import qouteall.imm_ptl.core.portal.EndPortalEntity;
 import qouteall.imm_ptl.core.portal.PortalPlaceholderBlock;
 
@@ -63,7 +62,7 @@ public class MixinEnderEyeItem {
                         for (int dz = 0; dz < 3; ++dz) {
                             world.setBlock(
                                 blockPos_2.offset(dx, 0, dz),
-                                    IPRegistry.NETHER_PORTAL_BLOCK.get().defaultBlockState().setValue(
+                                PortalPlaceholderBlock.instance.defaultBlockState().setValue(
                                     PortalPlaceholderBlock.AXIS, Direction.Axis.Y
                                 ),
                                 2

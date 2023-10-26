@@ -36,7 +36,7 @@ public class IPModEntryClient {
 
     @SubscribeEvent
     public static void initPortalRenderers(EntityRenderersEvent.RegisterRenderers event) {
-        
+
         Arrays.stream(new EntityType<?>[]{ //TODO @Nick1st Rename does to better match their respective name in Fabric
                 IPRegistry.PORTAL.get(),
                 IPRegistry.NETHER_PORTAL_NEW.get(),
@@ -48,16 +48,16 @@ public class IPModEntryClient {
                 IPRegistry.END_FLOOR_PORTAL.get(),
                 IPRegistry.GENERAL_BREAKABLE_PORTAL.get()
         }).peek(
-            Validate::notNull
+                Validate::notNull
         ).forEach(
-            entityType -> event.registerEntityRenderer(
-                entityType,
-                (EntityRendererProvider) PortalEntityRenderer::new
-            )
+                entityType -> event.registerEntityRenderer(
+                        entityType,
+                        (EntityRendererProvider) PortalEntityRenderer::new
+                )
         );
 
         event.registerEntityRenderer(IPRegistry.LOADING_INDICATOR.get(), LoadingIndicatorRenderer::new);
-        
+
     }
 
     public static void onInitializeClient() {
@@ -68,9 +68,9 @@ public class IPModEntryClient {
                 ModList.get().isLoaded("rubidium");
         if (isSodiumPresent) {
             Helper.log("Rubidium is present");
-            
+
             SodiumInterface.invoker = new SodiumInterface.OnSodiumPresent();
-            
+
             // Sodium compat is pretty ok now. No warning needed.
 //            IPGlobal.clientTaskList.addTask(MyTaskList.oneShotTask(() -> {
 //                if (IPGlobal.enableWarning) {
@@ -84,17 +84,17 @@ public class IPModEntryClient {
         else {
             Helper.log("Rubidium is not present");
         }
-        
+
         if (ModList.get().isLoaded("oculus")) {
             Helper.log("Oculus is present");
             IrisInterface.invoker = new IrisInterface.OnIrisPresent();
             ExperimentalIrisPortalRenderer.init();
-            
+
             IPGlobal.clientTaskList.addTask(MyTaskList.oneShotTask(() -> {
                 if (IPGlobal.enableWarning) {
                     CHelper.printChat(
-                        Component.translatable("imm_ptl.iris_warning")
-                            .append(IPMcHelper.getDisableWarningText())
+                            Component.translatable("imm_ptl.iris_warning")
+                                    .append(IPMcHelper.getDisableWarningText("iris"))
                     );
                 }
             }));
@@ -102,8 +102,8 @@ public class IPModEntryClient {
         else {
             Helper.log("Iris is not present");
         }
-        
+
         IPModInfoChecking.initClient();
     }
-    
+
 }

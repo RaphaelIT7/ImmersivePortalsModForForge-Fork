@@ -22,11 +22,11 @@ import qouteall.imm_ptl.peripheral.alternate_dimension.ChaosBiomeSource;
 import qouteall.imm_ptl.peripheral.alternate_dimension.ErrorTerrainGenerator;
 import qouteall.imm_ptl.peripheral.alternate_dimension.FormulaGenerator;
 import qouteall.imm_ptl.peripheral.alternate_dimension.NormalSkylandGenerator;
-import qouteall.imm_ptl.peripheral.dim_stack.DimStackGameRule;
 import qouteall.imm_ptl.peripheral.dim_stack.DimStackManagement;
 import qouteall.imm_ptl.peripheral.guide.IPOuterClientMisc;
 import qouteall.imm_ptl.peripheral.mixin.common.end_portal.IEEndDragonFight;
 import qouteall.imm_ptl.peripheral.portal_generation.IntrinsicPortalGeneration;
+import qouteall.q_misc_util.LifecycleHack;
 import qouteall.q_misc_util.MiscHelper;
 
 import java.util.List;
@@ -53,11 +53,17 @@ public class PeripheralModMain {
         FormulaGenerator.init();
         
         IntrinsicPortalGeneration.init();
-        
-        DimStackGameRule.init();
+
         DimStackManagement.init();
         
         AlternateDimensions.init();
+
+        LifecycleHack.markNamespaceStable("immersive_portals");
+        LifecycleHack.markNamespaceStable("imm_ptl");
+
+        CommandStickItem.init();
+
+        //CommandStickItem.registerCommandStickTypes();
 
 //        Registry.register( //Fixme removal
 //            BuiltInRegistries.CHUNK_GENERATOR,
@@ -76,7 +82,7 @@ public class PeripheralModMain {
 //            ChaosBiomeSource.CODEC
 //        );
 
-        EndPortalEntity.updateDragonFightStatusFunc = () -> {
+        /*EndPortalEntity.updateDragonFightStatusFunc = () -> {
             ServerLevel world = MiscHelper.getServer().getLevel(Level.END);
             if (world == null) {
                 return;
@@ -88,7 +94,7 @@ public class PeripheralModMain {
             if (((IEEndDragonFight) dragonFight).ip_getNeedsStateScanning()) {
                 ((IEEndDragonFight) dragonFight).ip_scanState();
             }
-        };
+        };*/
     }
     
     public static void registerCommandStickTypes() {

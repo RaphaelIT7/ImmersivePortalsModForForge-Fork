@@ -34,7 +34,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 public class ExtraDimensionStorage {
-    
+
     public static void init() {
         MinecraftForge.EVENT_BUS.register(ExtraDimensionStorage.class);
 //        DimensionAPI.serverDimensionsLoadEvent.register( //TODO Reimplement this !DONE
@@ -51,7 +51,7 @@ public class ExtraDimensionStorage {
         MinecraftServer server = MiscHelper.getServer();
         if (server != null && server.isRunning()) {
             RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, registryAccess);
-
+    
             Registry<LevelStem> dimensionRegistry = registryAccess.registryOrThrow(Registries.LEVEL_STEM);
             
             Path extraStorageFolderPath = getExtraStorageFolderPath();

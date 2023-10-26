@@ -9,14 +9,24 @@ import net.minecraft.client.multiplayer.ClientRegistryLayer;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.prediction.BlockStatePredictionHandler;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.telemetry.WorldSessionTelemetryManager;
 import net.minecraft.core.LayeredRegistryAccess;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.game.*;
+import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
+import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
+import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
+import net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData;
+import net.minecraft.network.protocol.game.ClientboundLoginPacket;
+import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
+import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
+import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
@@ -26,13 +36,13 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import qouteall.imm_ptl.core.ClientWorldLoader;
-import qouteall.imm_ptl.core.IPCGlobal;
 import qouteall.imm_ptl.core.IPGlobal;
-import qouteall.q_misc_util.dimension.DimensionTypeSync;
 import qouteall.imm_ptl.core.ducks.IEClientPlayNetworkHandler;
 import qouteall.imm_ptl.core.ducks.IEPlayerPositionLookS2CPacket;
 import qouteall.imm_ptl.core.network.IPNetworkAdapt;
+import qouteall.imm_ptl.core.teleportation.ClientTeleportationManager;
 import qouteall.q_misc_util.Helper;
+import qouteall.q_misc_util.dimension.DimensionTypeSync;
 import qouteall.q_misc_util.my_util.LimitedLogger;
 
 import java.util.Map;
@@ -60,9 +70,15 @@ public abstract class MixinClientPacketListener implements IEClientPlayNetworkHa
     @Shadow
     protected abstract void applyLightData(int x, int z, ClientboundLightUpdatePacketData data);
     
-    @Shadow public abstract RegistryAccess registryAccess();
+    @Shadow
+    public abstract RegistryAccess registryAccess();
     
-    @Shadow private LayeredRegistryAccess<ClientRegistryLayer> registryAccess;
+    @Shadow
+    private LayeredRegistryAccess<ClientRegistryLayer> registryAccess;
+    
+    @Shadow
+    @Final
+    private static Logger LOGGER;
     
     @Override
     public void ip_setWorld(ClientLevel world) {
@@ -102,8 +118,7 @@ public abstract class MixinClientPacketListener implements IEClientPlayNetworkHa
             value = "INVOKE",
             target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/util/thread/BlockableEventLoop;)V",
             shift = At.Shift.AFTER
-        ),
-        cancellable = true
+        )
     )
     private void onProcessingPositionPacket(
         ClientboundPlayerPositionPacket packet,
@@ -113,25 +128,31 @@ public abstract class MixinClientPacketListener implements IEClientPlayNetworkHa
             return;
         }
         
-        ResourceKey<Level> playerDimension = ((IEPlayerPositionLookS2CPacket) packet).getPlayerDimension();
+        ResourceKey<Level> packetDim = ((IEPlayerPositionLookS2CPacket) packet).getPlayerDimension();
         
-        ClientLevel world = minecraft.level;
+        LocalPlayer player = minecraft.player;
+        assert player != null;
+        Level playerWorld = player.level();
         
-        if (world != null) {
-            if (world.dimension() != playerDimension) {
-                if (!Minecraft.getInstance().player.isRemoved()) {
-                    immptl_limitedLogger.log(String.format(
-                        "denied position packet %s %s %s %s",
-                        ((IEPlayerPositionLookS2CPacket) packet).getPlayerDimension(),
-                        packet.getX(), packet.getY(), packet.getZ()
-                    ));
-                    ci.cancel();
-                }
-            }
+        if (packetDim != playerWorld.dimension()) {
+            LOGGER.info(
+                "[ImmPtl] Client accepted position packet in another dimension. Packet: {} {} {} {}. Player: {} {} {} {}",
+                packetDim.location(), packet.getX(), packet.getY(), packet.getZ(),
+                playerWorld.dimension().location(), player.getX(), player.getY(), player.getZ()
+            );
+            
+            ClientTeleportationManager.forceTeleportPlayer(
+                packetDim,
+                new Vec3(packet.getX(), packet.getY(), packet.getZ())
+            );
+            
+//            ClientTeleportationManager.disableTeleportFor(2);
         }
         
-        IPCGlobal.clientTeleportationManager.disableTeleportFor(5);
-        
+        LOGGER.info(
+            "[ImmPtl] Client accepted position packet {} {} {} {}",
+            packetDim.location(), packet.getX(), packet.getY(), packet.getZ()
+        );
     }
     
     private boolean isReProcessingPassengerPacket;
@@ -175,26 +196,9 @@ public abstract class MixinClientPacketListener implements IEClientPlayNetworkHa
     private Entity redirectGetEntityById(ClientLevel clientWorld, int id) {
         Entity entity = clientWorld.getEntity(id);
         if (entity == null) {
-            immptl_limitedLogger.err("missing entity for data tracking " + clientWorld + id);
+            immptl_limitedLogger.err("missing entity for data tracking " + clientWorld + " " + id);
         }
         return entity;
-    }
-    
-    // for debug
-    @Redirect(
-        method = "Lnet/minecraft/client/multiplayer/ClientPacketListener;handleSetEntityMotion(Lnet/minecraft/network/protocol/game/ClientboundSetEntityMotionPacket;)V",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/world/entity/Entity;lerpMotion(DDD)V"
-        )
-    )
-    private void redirectSetVelocityOnOnVelocityUpdate(Entity entity, double x, double y, double z) {
-        if (!entity.isControlledByLocalInstance()) {
-            entity.lerpMotion(x, y, z);
-        }
-        else {
-            immptl_limitedLogger.err("wrong velocity update packet " + entity);
-        }
     }
     
     // make sure that the game time is synchronized for all dimensions
@@ -234,6 +238,60 @@ public abstract class MixinClientPacketListener implements IEClientPlayNetworkHa
     private void redirectHandleBlockChangedAck(ClientLevel instance, int seqNumber) {
         for (ClientLevel clientWorld : ClientWorldLoader.getClientWorlds()) {
             clientWorld.handleBlockChangedAck(seqNumber);
+        }
+    }
+    
+    @Inject(
+        method = "handleAddEntity",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/util/thread/BlockableEventLoop;)V",
+            shift = At.Shift.AFTER
+        ),
+        cancellable = true
+    )
+    private void onHandleAddEntity(ClientboundAddEntityPacket packet, CallbackInfo ci) {
+        int entityId = packet.getId();
+        
+        Entity existingEntity = level.getEntity(entityId);
+        
+        if (existingEntity != null && !existingEntity.getPassengers().isEmpty()) {
+            LOGGER.warn("[ImmPtl] Entity already exists and has passengers when accepting add-entity packet. Ignoring. {} {}", existingEntity, packet);
+            ci.cancel();
+        }
+    }
+    
+    // for debugging
+    @Inject(
+        method = "handleLevelChunkWithLight",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/util/thread/BlockableEventLoop;)V",
+            shift = At.Shift.AFTER
+        )
+    )
+    private void onHandleLevelChunkWithLight(
+        ClientboundLevelChunkWithLightPacket packet, CallbackInfo ci
+    ) {
+        if (IPGlobal.chunkPacketDebug) {
+            LOGGER.info("Chunk Load Packet {} {} {}", level.dimension().location(), packet.getX(), packet.getZ());
+        }
+    }
+    
+    // for debugging
+    @Inject(
+        method = "handleForgetLevelChunk",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/util/thread/BlockableEventLoop;)V",
+            shift = At.Shift.AFTER
+        )
+    )
+    private void onHandleForgetLevelChunk(
+        ClientboundForgetLevelChunkPacket packet, CallbackInfo ci
+    ) {
+        if (IPGlobal.chunkPacketDebug) {
+            LOGGER.info("Chunk Unload Packet {} {} {}", level.dimension().location(), packet.getX(), packet.getZ());
         }
     }
 }

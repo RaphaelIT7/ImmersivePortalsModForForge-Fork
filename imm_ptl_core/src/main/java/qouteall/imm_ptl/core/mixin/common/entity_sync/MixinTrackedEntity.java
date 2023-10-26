@@ -25,6 +25,7 @@ import qouteall.imm_ptl.core.chunk_loading.NewChunkTrackingGraph;
 import qouteall.imm_ptl.core.ducks.IEEntityTracker;
 import qouteall.imm_ptl.core.ducks.IEEntityTrackerEntry;
 import qouteall.imm_ptl.core.ducks.IEThreadedAnvilChunkStorage;
+import qouteall.imm_ptl.core.miscellaneous.IPVanillaCopy;
 import qouteall.imm_ptl.core.network.PacketRedirection;
 
 import java.util.List;
@@ -67,7 +68,7 @@ public abstract class MixinTrackedEntity implements IEEntityTracker {
         ServerPlayerConnection entityTrackingListener, Packet<?> packet
     ) {
         PacketRedirection.withForceRedirect(
-            ((ServerLevel) entity.level),
+            ((ServerLevel) entity.level()),
             () -> {
                 entityTrackingListener.send(packet);
             }
@@ -85,7 +86,7 @@ public abstract class MixinTrackedEntity implements IEEntityTracker {
         ServerGamePacketListenerImpl serverPlayNetworkHandler,
         Packet packet_1
     ) {
-        PacketRedirection.sendRedirectedPacket(serverPlayNetworkHandler, packet_1, entity.level.dimension());
+        PacketRedirection.sendRedirectedPacket(serverPlayNetworkHandler, packet_1, entity.level().dimension());
     }
     
     // Note VMP redirects getEffectiveRange()
@@ -111,16 +112,20 @@ public abstract class MixinTrackedEntity implements IEEntityTracker {
         return entity;
     }
     
+    /**
+     * {@link ChunkMap.TrackedEntity#updatePlayer(ServerPlayer)}
+     */
+    @IPVanillaCopy
     @Override
     public void updateEntityTrackingStatus(ServerPlayer player) {
         IEThreadedAnvilChunkStorage storage = (IEThreadedAnvilChunkStorage)
-            ((ServerLevel) entity.level).getChunkSource().chunkMap;
+            ((ServerLevel) entity.level()).getChunkSource().chunkMap;
         
         if (player == this.entity) {
             return;
         }
         
-        ProfilerFiller profiler = player.level.getProfiler();
+        ProfilerFiller profiler = player.level().getProfiler();
         profiler.push("portal_entity_track");
         
         int maxWatchDistance = Math.min(
@@ -129,9 +134,9 @@ public abstract class MixinTrackedEntity implements IEEntityTracker {
         );
         ChunkPos chunkPos = entity.chunkPosition();
         boolean isWatchedNow =
-            NewChunkTrackingGraph.isPlayerWatchingChunkWithinRaidus(
+            NewChunkTrackingGraph.isPlayerWatchingChunkWithinRadius(
                 player,
-                this.entity.level.dimension(),
+                this.entity.level().dimension(),
                 chunkPos.x,
                 chunkPos.z,
                 maxWatchDistance
@@ -164,7 +169,7 @@ public abstract class MixinTrackedEntity implements IEEntityTracker {
         ((IEEntityTrackerEntry) serverEntity).ip_updateTrackedEntityPosition();
         
         Packet spawnPacket = entity.getAddEntityPacket();
-        Packet<ClientGamePacketListener> redirected = PacketRedirection.createRedirectedMessage(entity.level.dimension(), spawnPacket);
+        Packet<ClientGamePacketListener> redirected = PacketRedirection.createRedirectedMessage(entity.level().dimension(), spawnPacket);
         seenBy.forEach(handler -> {
             handler.send(redirected);
         });

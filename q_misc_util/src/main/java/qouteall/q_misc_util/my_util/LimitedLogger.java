@@ -1,7 +1,6 @@
 package qouteall.q_misc_util.my_util;
 
 
-import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import qouteall.q_misc_util.Helper;
@@ -31,6 +30,14 @@ public class LimitedLogger {
     }
     
     public void lErr(Logger logger, String template, Object... args) {
+        invoke(() -> logger.error(template, args));
+    }
+    
+    public void lInfo(org.apache.logging.log4j.Logger logger, String template, Object... args) {
+        invoke(() -> logger.info(template, args));
+    }
+    
+    public void lErr(org.apache.logging.log4j.Logger logger, String template, Object... args) {
         invoke(() -> logger.error(template, args));
     }
     

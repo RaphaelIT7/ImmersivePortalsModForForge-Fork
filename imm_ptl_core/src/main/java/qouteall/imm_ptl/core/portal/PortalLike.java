@@ -1,19 +1,18 @@
 package qouteall.imm_ptl.core.portal;
 
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.my_util.BoxPredicate;
 import qouteall.q_misc_util.my_util.DQuaternion;
 import qouteall.q_misc_util.my_util.Plane;
 
-import javax.annotation.Nullable;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -37,16 +36,14 @@ public interface PortalLike {
     
     Vec3 transformLocalVec(Vec3 localVec);
     
+    Vec3 transformLocalVecNonScale(Vec3 localVec);
+    
     Vec3 inverseTransformLocalVec(Vec3 localVec);
     
     Vec3 inverseTransformPoint(Vec3 point);
     
-    // TODO remove this and use the area box
-    double getDistanceToNearestPointInPortal(
-        Vec3 point
-    );
+    double getDistanceToNearestPointInPortal(Vec3 point);
     
-    // TODO remove this and use the area box
     double getDestAreaRadiusEstimation();
     
     Vec3 getOriginPos();
@@ -77,6 +74,7 @@ public interface PortalLike {
     @Nullable
     Vec3[] getOuterFrustumCullingVertices();
     
+    // TODO remove from interface in 1.20.2
     @OnlyIn(Dist.CLIENT)
     void renderViewAreaMesh(Vec3 portalPosRelativeToCamera, Consumer<Vec3> vertexOutput);
     
@@ -103,15 +101,14 @@ public interface PortalLike {
         return getOriginWorld().dimension();
     }
     
-    // TODO rename to isInsideDestination in 1.20
-    default boolean isInside(Vec3 entityPos, double valve) {
+    default boolean isOnDestinationSide(Vec3 entityPos, double valve) {
         Plane innerClipping = getInnerClipping();
         
         if (innerClipping == null) {
             return true;
         }
         
-        double v = entityPos.subtract(innerClipping.pos).dot(innerClipping.normal);
+        double v = entityPos.subtract(innerClipping.pos()).dot(innerClipping.normal());
         return v > valve;
     }
     

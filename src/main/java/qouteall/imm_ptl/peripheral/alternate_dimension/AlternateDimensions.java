@@ -1,6 +1,7 @@
 package qouteall.imm_ptl.peripheral.alternate_dimension;
 
 import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
@@ -20,32 +21,25 @@ import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.flat.FlatLayerInfo;
 import net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.ducks.IEWorld;
 import qouteall.q_misc_util.MiscHelper;
 import qouteall.q_misc_util.api.DimensionAPI;
-import qouteall.q_misc_util.forge.events.ServerDimensionsLoadEvent;
 
-import javax.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.Optional;
 
 public class AlternateDimensions {
+//    public static final HolderLookup.Provider vanillaRegistriesLookup = VanillaRegistries.createLookup();
     
     public static void init() {
-        MinecraftForge.EVENT_BUS.register(AlternateDimensions.class);
+        //DimensionAPI.serverDimensionsLoadEvent.register(AlternateDimensions::initializeAlternateDimensions);
         
         IPGlobal.postServerTickSignal.connect(AlternateDimensions::tick);
     }
-
-    @SubscribeEvent
-    public static void onServerDimensionsLoad(ServerDimensionsLoadEvent event) {
-        initializeAlternateDimensions(event.generatorOptions, event.registryManager);
-    }
-
+    
     private static void initializeAlternateDimensions(
         WorldOptions worldOptions, RegistryAccess registryManager
     ) {
@@ -159,6 +153,7 @@ public class AlternateDimensions {
             rm.registryOrThrow(Registries.DENSITY_FUNCTION).asLookup(),
             rm.registryOrThrow(Registries.NOISE).asLookup(),
             rm.registryOrThrow(Registries.NOISE_SETTINGS).asLookup(),
+            rm.registryOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST).asLookup(),
             seed
         );
     }
@@ -179,7 +174,7 @@ public class AlternateDimensions {
         
         FlatLevelGeneratorSettings flatChunkGeneratorConfig =
             new FlatLevelGeneratorSettings(
-                Optional.empty(),
+                Optional.of(HolderSet.direct()),
                 plainsHolder,
                 List.of()
             );

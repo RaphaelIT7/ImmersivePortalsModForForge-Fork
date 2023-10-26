@@ -7,8 +7,8 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
-import net.minecraft.world.level.material.Material;
-import net.minecraftforge.event.CreativeModeTabEvent;
+import net.minecraft.world.level.material.MapColor;
+import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
@@ -58,20 +58,20 @@ public class PeripheralModEntry {
     private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, MODID);
     private static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MODID);
 
-    public static final RegistryObject<Block> PORTAL_HELPER_BLOCK = BLOCKS.register("portal_helper", () -> new Block(BlockBehaviour.Properties.of(Material.METAL).noOcclusion().isRedstoneConductor((a, b, c) -> false)));
+    public static final RegistryObject<Block> PORTAL_HELPER_BLOCK = BLOCKS.register("portal_helper", () -> new Block(BlockBehaviour.Properties.of().mapColor(MapColor.METAL).noOcclusion().isRedstoneConductor((a, b, c) -> false)));
     public static final RegistryObject<Item> PORTAL_HELPER_ITEM = ITEMS.register("portal_helper", () -> new PortalHelperItem(PORTAL_HELPER_BLOCK.get(), new Item.Properties()));
     public static final RegistryObject<Item> COMMAND_STICK_ITEM = ITEMS.register("command_stick", () -> new CommandStickItem(new Item.Properties()));
 
     private static void registerBlockItems() {
         //PeripheralModMain.registerCommandStickTypes();
-        
+
         CommandStickItem.init();
     }
 
     @SubscribeEvent
-    public void buildContents(CreativeModeTabEvent.BuildContents event) {
+    public void buildContents(BuildCreativeModeTabContentsEvent event) {
         // Add to creative tab
-        if (event.getTab() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
+        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
             event.accept(PORTAL_HELPER_ITEM.get().getDefaultInstance());
             event.accept(PORTAL_HELPER_ITEM.get().getDefaultInstance());
         }
@@ -86,7 +86,7 @@ public class PeripheralModEntry {
         PeripheralRegistries.CHUNK_GENERATOR.register(FMLJavaModLoadingContext.get().getModEventBus());
         PeripheralRegistries.BIOME_SOURCE.register(FMLJavaModLoadingContext.get().getModEventBus());
         CommandStickItem.CommandStickData.register(FMLJavaModLoadingContext.get().getModEventBus());
-        
+
         PeripheralModMain.init();
     }
 

@@ -1,8 +1,6 @@
 package qouteall.q_misc_util.dimension;
 
 import com.google.common.collect.Streams;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
@@ -13,6 +11,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.minecraft.world.level.dimension.DimensionType;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.MiscHelper;
 
@@ -99,22 +99,10 @@ public class DimensionTypeSync {
     
     @OnlyIn(Dist.CLIENT)
     public static ResourceKey<DimensionType> getDimensionTypeKey(ResourceKey<Level> worldKey) {
-        if (worldKey == Level.OVERWORLD) {
-            return BuiltinDimensionTypes.OVERWORLD;
-        }
-        
-        if (worldKey == Level.NETHER) {
-            return BuiltinDimensionTypes.NETHER;
-        }
-        
-        if (worldKey == Level.END) {
-            return BuiltinDimensionTypes.END;
-        }
-        
         ResourceKey<DimensionType> obj = clientTypeMap.get(worldKey);
         
         if (obj == null) {
-            Helper.err("Missing Dimension Type For " + worldKey);
+            Helper.err("Missing Dimension Type For " + worldKey.location());
             return BuiltinDimensionTypes.OVERWORLD;
         }
         

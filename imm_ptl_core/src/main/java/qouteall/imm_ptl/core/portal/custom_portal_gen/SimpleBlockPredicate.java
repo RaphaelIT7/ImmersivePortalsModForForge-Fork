@@ -5,13 +5,10 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.Lifecycle;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.packs.resources.ReloadableResourceManager;
-import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -66,7 +63,7 @@ public class SimpleBlockPredicate implements Predicate<BlockState> {
         
         if (server == null) {
             return DataResult.error(
-                "[Immersive Portals] Simple block predicate should not be deserialized in client"
+                () -> "[Immersive Portals] Simple block predicate should not be deserialized in client"
             );
         }
         
@@ -92,8 +89,8 @@ public class SimpleBlockPredicate implements Predicate<BlockState> {
             Block block = BuiltInRegistries.BLOCK.get(id);
             return DataResult.success(new SimpleBlockPredicate(string, block), Lifecycle.stable());
         }
-        
-        return DataResult.error("Unknown block or block tag:" + string);
+    
+        return DataResult.error(() -> "Unknown block or block tag:" + string);
     }
     
     private static String serialize(SimpleBlockPredicate predicate) {

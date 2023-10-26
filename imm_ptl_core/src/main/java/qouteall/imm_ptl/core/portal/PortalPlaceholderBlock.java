@@ -1,7 +1,5 @@
 package qouteall.imm_ptl.core.portal;
 
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.BlockGetter;
@@ -9,17 +7,20 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.portal.nether_portal.BreakablePortalEntity;
-
-import java.util.Random;
 
 public class PortalPlaceholderBlock extends Block {
     public static final EnumProperty<Direction.Axis> AXIS = BlockStateProperties.AXIS;
@@ -48,7 +49,15 @@ public class PortalPlaceholderBlock extends Block {
         10.0D
     );
     
-    //public static PortalPlaceholderBlock instance;
+    public static final PortalPlaceholderBlock instance = new PortalPlaceholderBlock(
+        Properties.of()
+            .noCollission()
+            .sound(SoundType.GLASS)
+            .strength(1.0f, 0)
+            .noOcclusion()
+            .noLootTable()
+            .lightLevel((s) -> 15)
+    );
     
     public PortalPlaceholderBlock(Properties properties) {
         super(properties);
@@ -123,6 +132,16 @@ public class PortalPlaceholderBlock extends Block {
         );
     }
     
+    public static boolean isHitOnPlaceholder(HitResult hitResult, Level world) {
+        if (hitResult.getType() == HitResult.Type.BLOCK) {
+            if (hitResult instanceof BlockHitResult blockHitResult) {
+                Block hittingBlock = world.getBlockState(blockHitResult.getBlockPos()).getBlock();
+                return hittingBlock == PortalPlaceholderBlock.instance;
+            }
+        }
+        return false;
+    }
+    
     //---------These are copied from BlockBarrier
     @Override
     public boolean propagatesSkylightDown(
@@ -147,5 +166,4 @@ public class PortalPlaceholderBlock extends Block {
     ) {
         return 1.0F;
     }
-    
 }

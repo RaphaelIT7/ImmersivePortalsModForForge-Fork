@@ -9,7 +9,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import qouteall.imm_ptl.core.McHelper;
-import qouteall.imm_ptl.core.platform_specific.IPRegistry;
 import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.imm_ptl.core.portal.PortalExtension;
 import qouteall.imm_ptl.core.portal.PortalManipulation;
@@ -18,7 +17,6 @@ import qouteall.imm_ptl.core.portal.custom_portal_gen.form.AbstractDiligentForm;
 import qouteall.imm_ptl.core.portal.custom_portal_gen.form.PortalGenForm;
 import qouteall.imm_ptl.core.portal.nether_portal.BlockPortalShape;
 import qouteall.imm_ptl.peripheral.PeripheralModMain;
-import qouteall.imm_ptl.peripheral.platform_specific.PeripheralModEntry;
 
 import java.util.function.Predicate;
 
@@ -30,7 +28,7 @@ public class PortalHelperForm extends AbstractDiligentForm {
     @Override
     public void generateNewFrame(ServerLevel fromWorld, BlockPortalShape fromShape, ServerLevel toWorld, BlockPortalShape toShape) {
         for (BlockPos blockPos : toShape.frameAreaWithoutCorner) {
-            toWorld.setBlockAndUpdate(blockPos, PeripheralModEntry.PORTAL_HELPER_BLOCK.get().defaultBlockState());
+            toWorld.setBlockAndUpdate(blockPos, PeripheralModMain.portalHelperBlock.defaultBlockState());
         }
         McHelper.findEntitiesByBox(
             ServerPlayer.class,
@@ -57,11 +55,11 @@ public class PortalHelperForm extends AbstractDiligentForm {
         world.setBlockAndUpdate(info.fromShape.firstFramePos, Blocks.AIR.defaultBlockState());
         world.setBlockAndUpdate(info.toShape.firstFramePos, Blocks.AIR.defaultBlockState());
         
-        Portal portal = info.createTemplatePortal(IPRegistry.PORTAL.get());
+        Portal portal = info.createTemplatePortal(Portal.entityType);
         PortalExtension.get(portal).bindCluster = true;
-        Portal flipped = PortalManipulation.createFlippedPortal(portal, IPRegistry.PORTAL.get());
-        Portal reverse = PortalManipulation.createReversePortal(portal, IPRegistry.PORTAL.get());
-        Portal parallel = PortalManipulation.createReversePortal(flipped, IPRegistry.PORTAL.get());
+        Portal flipped = PortalManipulation.createFlippedPortal(portal, Portal.entityType);
+        Portal reverse = PortalManipulation.createReversePortal(portal, Portal.entityType);
+        Portal parallel = PortalManipulation.createReversePortal(flipped, Portal.entityType);
         
         Portal[] portals = {portal, flipped, reverse, parallel};
         
@@ -74,12 +72,12 @@ public class PortalHelperForm extends AbstractDiligentForm {
     
     @Override
     public Predicate<BlockState> getOtherSideFramePredicate() {
-        return blockState -> blockState.getBlock() == PeripheralModEntry.PORTAL_HELPER_BLOCK.get();
+        return blockState -> blockState.getBlock() == PeripheralModMain.portalHelperBlock;
     }
     
     @Override
     public Predicate<BlockState> getThisSideFramePredicate() {
-        return blockState -> blockState.getBlock() == PeripheralModEntry.PORTAL_HELPER_BLOCK.get();
+        return blockState -> blockState.getBlock() == PeripheralModMain.portalHelperBlock;
     }
     
     @Override

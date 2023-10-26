@@ -1,27 +1,32 @@
 package qouteall.imm_ptl.peripheral.dim_stack;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-
-import java.util.List;
-import java.util.function.Consumer;
-
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 
+import java.util.List;
+import java.util.function.Consumer;
+
 public class SelectDimensionScreen extends Screen {
     public final DimStackScreen parent;
     private DimListWidget dimListWidget;
     private Button confirmButton;
-    private Consumer<ResourceKey<Level>> outerCallback;
+    private final Consumer<ResourceKey<Level>> outerCallback;
+    private final List<ResourceKey<Level>> dimensionList;
     
-    protected SelectDimensionScreen(DimStackScreen parent, Consumer<ResourceKey<Level>> callback) {
+    protected SelectDimensionScreen(
+        DimStackScreen parent,
+        Consumer<ResourceKey<Level>> callback,
+        List<ResourceKey<Level>> dimensionList
+    ) {
         super(Component.translatable("imm_ptl.select_dimension"));
         this.parent = parent;
         this.outerCallback = callback;
+        this.dimensionList = dimensionList;
     }
     
     @Override
@@ -33,21 +38,18 @@ public class SelectDimensionScreen extends Screen {
             height - 30,
             DimEntryWidget.widgetHeight,
             this,
-            DimListWidget.Type.addDimensionList
+            DimListWidget.Type.addDimensionList,
+            null
         );
         addWidget(dimListWidget);
         
         Consumer<DimEntryWidget> callback = w -> dimListWidget.setSelected(w);
         
-        List<ResourceKey<Level>> dimensionList = parent.dimensionListSupplier.apply(this);
-        
         for (ResourceKey<Level> dim : dimensionList) {
-            dimListWidget.entryWidgets.add(new DimEntryWidget(dim, dimListWidget, callback, DimEntryWidget.Type.simple, new DimStackEntry(dim)));
+            dimListWidget.children().add(new DimEntryWidget(dim, dimListWidget, callback, new DimStackEntry(dim)));
         }
-        
-        dimListWidget.update();
-        
-        Button button = Button
+    
+        confirmButton = (Button) addRenderableWidget(Button
             .builder(
                 Component.translatable("imm_ptl.confirm_select_dimension"),
                 (buttonWidget) -> {
@@ -55,15 +57,13 @@ public class SelectDimensionScreen extends Screen {
                     if (selected == null) {
                         return;
                     }
-                    outerCallback.accept(selected.dimension);
                     Minecraft.getInstance().setScreen(parent);
+                    outerCallback.accept(selected.dimension);
                 }
             )
             .pos(this.width / 2 - 75, this.height - 28)
             .size(150, 20)
-            .build();
-        confirmButton = (Button) addRenderableWidget(button);
-        
+            .build());
     }
     
     @Override
@@ -73,16 +73,15 @@ public class SelectDimensionScreen extends Screen {
     }
     
     @Override
-    public void render(PoseStack matrixStack, int mouseX, int mouseY, float delta) {
-        this.renderBackground(matrixStack);
+    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta) {
+        this.renderBackground(guiGraphics);
         
-        dimListWidget.render(matrixStack, mouseX, mouseY, delta);
+        dimListWidget.render(guiGraphics, mouseX, mouseY, delta);
         
-        super.render(matrixStack, mouseX, mouseY, delta);
+        super.render(guiGraphics, mouseX, mouseY, delta);
         
-        
-        this.drawCenteredString(
-            matrixStack, this.font, this.title.getString(), this.width / 2, 10, -1
+        guiGraphics.drawCenteredString(
+            this.font, this.title.getString(), this.width / 2, 10, -1
         );
     }
 }

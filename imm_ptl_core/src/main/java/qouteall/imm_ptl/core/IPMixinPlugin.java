@@ -21,7 +21,7 @@ public class IPMixinPlugin implements IMixinConfigPlugin {
     
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        if (LoadingModList.get().getModFileById("porting_lib") != null) { //TODO Reenable this
+        if (LoadingModList.get().getModFileById("porting_lib") != null) {
             if (mixinClassName.contains("MixinRenderTarget") || mixinClassName.contains("MixinMainTarget")) {
                 return false;
             }

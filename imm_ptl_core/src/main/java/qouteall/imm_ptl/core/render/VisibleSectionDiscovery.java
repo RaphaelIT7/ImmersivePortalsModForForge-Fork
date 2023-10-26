@@ -1,6 +1,15 @@
 package qouteall.imm_ptl.core.render;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import net.minecraft.client.Camera;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.chunk.ChunkRenderDispatcher;
+import net.minecraft.client.renderer.culling.Frustum;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import qouteall.imm_ptl.core.ClientWorldLoader;
@@ -14,16 +23,6 @@ import qouteall.imm_ptl.core.render.context_management.WorldRenderInfo;
 
 import java.util.ArrayDeque;
 import java.util.Stack;
-
-import net.minecraft.client.Camera;
-import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.chunk.ChunkRenderDispatcher;
-import net.minecraft.client.renderer.culling.Frustum;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.SectionPos;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 
 /**
  * Discover visible sections by breadth-first traverse, for portal rendering.
@@ -64,7 +63,7 @@ public class VisibleSectionDiscovery {
         
         Vec3 cameraPos = camera.getPosition();
         vanillaFrustum.prepare(cameraPos.x, cameraPos.y, cameraPos.z);
-        cameraSectionPos = SectionPos.of(new BlockPos(cameraPos));
+        cameraSectionPos = SectionPos.of(BlockPos.containing(cameraPos));
         
         if (cameraPos.y < world.getMinBuildHeight()) {
             discoverBottomOrTopLayerVisibleChunks(builtChunks.minSectionY);

@@ -4,6 +4,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.client.multiplayer.ClientChunkCache;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -19,7 +20,7 @@ import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.fml.loading.FMLPaths;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
-import qouteall.imm_ptl.core.chunk_loading.MyClientChunkManager;
+import qouteall.imm_ptl.core.chunk_loading.ImmPtlClientChunkMap;
 import qouteall.imm_ptl.core.portal.custom_portal_gen.PortalGenInfo;
 import qouteall.q_misc_util.Helper;
 
@@ -29,16 +30,19 @@ import java.util.Optional;
 
 public class O_O {
     public static boolean isDimensionalThreadingPresent = false;
-    
+
     public static boolean isForge() {
         return true;
     }
-    
+    public static boolean isQuilt() {
+        return false;
+    }
+
     @OnlyIn(Dist.CLIENT)
     public static void onPlayerChangeDimensionClient(
-        ResourceKey<Level> from, ResourceKey<Level> to
+            ResourceKey<Level> from, ResourceKey<Level> to
     ) {
-        RequiemCompat.onPlayerTeleportedClient();
+
     }
 
 //    @OnlyIn(Dist.CLIENT)
@@ -65,65 +69,65 @@ public class O_O {
 //        fromWorld.removePlayer(player);
 //        player.removed = false;
 //    }
-    
+
     public static void onPlayerTravelOnServer(
-        ServerPlayer player,
-        ResourceKey<Level> from,
-        ResourceKey<Level> to
+            ServerPlayer player,
+            ResourceKey<Level> from,
+            ResourceKey<Level> to
     ) {
-        RequiemCompat.onPlayerTeleportedServer(player);
+
     }
 
     public static Path getGameDir() {
         return FMLPaths.GAMEDIR.get();
     }
 
-    public static void loadConfigFabric() { // TODO @Nick1st Remove or change this, as it's no longer in the upstream
+    /*public static void loadConfigFabric() { // TODO @Nick1st Remove or change this, as it's no longer in the upstream
         Helper.log("Loading Immersive Portals config");
         IPConfig ipConfig = IPConfig.readConfig();
         ipConfig.onConfigChanged();
         ipConfig.saveConfigFile();
     }
-    
+
     public static void onServerConstructed() { // TODO @Nick1st Remove this if unused
         // forge version initialize server config
-    }
-    
+    }*/
+
     private static final BlockState obsidianState = Blocks.OBSIDIAN.defaultBlockState();
-    
+
     public static boolean isObsidian(BlockState blockState) {
         return blockState == obsidianState;
     }
-    
+
     public static void postClientChunkLoadEvent(LevelChunk chunk) {
-        MinecraftForge.EVENT_BUS.post(new ChunkEvent.Load(chunk));
+        MinecraftForge.EVENT_BUS.post(new ChunkEvent.Load(chunk, true));
     }
-    
+
     public static void postClientChunkUnloadEvent(LevelChunk chunk) {
         MinecraftForge.EVENT_BUS.post(new ChunkEvent.Unload(chunk));
     }
-    
+
     public static boolean isDedicatedServer() {
         return FMLEnvironment.dist == Dist.DEDICATED_SERVER;
     }
-    
+
     public static void postPortalSpawnEventForge(PortalGenInfo info) {
-    
+
     }
-    
+
     @OnlyIn(Dist.CLIENT)
     public static ClientChunkCache createMyClientChunkManager(ClientLevel world, int loadDistance) {
-        return new MyClientChunkManager(world, loadDistance);
+        return new ImmPtlClientChunkMap(world, loadDistance);
     }
-    
+
     public static boolean getIsPehkuiPresent() {
         return ModList.get().isLoaded("pehkui");
     }
-    
+
     @Nullable
     public static String getImmPtlModInfoUrl() {
         String gameVersion = SharedConstants.getCurrentVersion().getName();
-        
+
         if (O_O.isForge()) {
             return "https://qouteall.fun/immptl_info/forge-%s.json".formatted(gameVersion);
         }
@@ -131,7 +135,7 @@ public class O_O {
             return "https://qouteall.fun/immptl_info/%s.json".formatted(gameVersion);
         }
     }
-    
+
     public static boolean isModLoadedWithinVersion(String modId, @Nullable String startVersion, @Nullable String endVersion) {
 
         if (ModList.get().isLoaded(modId)) { // TODO @Nick1st hopefully I didn't mess this up
@@ -150,15 +154,42 @@ public class O_O {
                     return false;
                 }
             }
-            
+
             return true;
-            
+
         }
         else {
             return false;
         }
     }
-    
+
+    @Nullable
+    public static ResourceLocation getModIconLocation(String modid) {
+        String path = String.valueOf(ModLoadingContext.get().getActiveContainer()
+                .getModInfo().getLogoFile());
+        if (path == null) {
+            return null;
+        }
+
+        // for example, if the icon path is "assets/modid/icon.png"
+        // then the result should be modid:icon.png
+
+        if (path.startsWith("/")) {
+            path = path.substring(1);
+        }
+        if (path.startsWith("assets")) {
+            path = path.substring("assets".length());
+        }
+        if (path.startsWith("/")) {
+            path = path.substring(1);
+        }
+        String[] parts = path.split("/");
+        if (parts.length != 2) {
+            return null;
+        }
+        return new ResourceLocation(parts[0], parts[1]);
+    }
+
     public static boolean shouldUpdateImmPtl(String latestReleaseVersion) { // TODO @Nick1st Implement Forge Version checking
         ArtifactVersion currentVersion = ModList.get().getModContainerById("imm_ptl_core").get().getModInfo().getVersion();
         ArtifactVersion latestVersion = new DefaultArtifactVersion(latestReleaseVersion);
@@ -169,8 +200,17 @@ public class O_O {
 
         return false;
     }
-    
+
     public static String getModDownloadLink() {
         return "https://www.curseforge.com/minecraft/mc-mods/immersive-portals-mod";
+    }
+
+    public static String getIssueLink() {
+        return "https://github.com/iPortalTeam/ImmersivePortalsMod/issues";
+    }
+
+    @Nullable
+    public static String getModName() {
+        return ModLoadingContext.get().getActiveContainer().getModInfo().getDisplayName();
     }
 }

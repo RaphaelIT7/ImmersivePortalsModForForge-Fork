@@ -15,6 +15,8 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.platform_specific.IPRegistry;
 import qouteall.imm_ptl.core.platform_specific.O_O;
+import qouteall.imm_ptl.core.portal.Portal;
+import qouteall.imm_ptl.core.portal.PortalPlaceholderBlock;
 import qouteall.q_misc_util.my_util.DQuaternion;
 
 public class NetherPortalEntity extends BreakablePortalEntity {
@@ -56,13 +58,11 @@ public class NetherPortalEntity extends BreakablePortalEntity {
     );
     
     
-    public static EntityType<NetherPortalEntity> entityType = IPRegistry.NETHER_PORTAL_NEW.get();
+    public static final EntityType<NetherPortalEntity> entityType =
+            IPRegistry.NETHER_PORTAL_NEW.get();
     
-    public NetherPortalEntity(
-        EntityType<?> entityType_1,
-        Level world_1
-    ) {
-        super(entityType_1, world_1);
+    public NetherPortalEntity(EntityType<?> entityType, Level world) {
+        super(entityType, world);
     }
     
     @Override
@@ -75,11 +75,11 @@ public class NetherPortalEntity extends BreakablePortalEntity {
         
         return blockPortalShape.area.stream()
             .allMatch(blockPos ->
-                level.getBlockState(blockPos).getBlock() == IPRegistry.NETHER_PORTAL_BLOCK.get()
+                level().getBlockState(blockPos).getBlock() == PortalPlaceholderBlock.instance
             ) &&
             blockPortalShape.frameAreaWithoutCorner.stream()
                 .allMatch(blockPos ->
-                    O_O.isObsidian(level.getBlockState(blockPos))
+                    O_O.isObsidian(level().getBlockState(blockPos))
                 );
     }
     
@@ -90,7 +90,7 @@ public class NetherPortalEntity extends BreakablePortalEntity {
             return;
         }
         
-        RandomSource random = level.getRandom();
+        RandomSource random = level().getRandom();
         
         for (int i = 0; i < (int) Math.ceil(width * height / 20); i++) {
             if (random.nextInt(10) == 0) {
@@ -105,7 +105,7 @@ public class NetherPortalEntity extends BreakablePortalEntity {
                 double vy = speedMultiplier * ((double) random.nextFloat() - 0.5D) * 0.5D;
                 double vz = speedMultiplier * ((double) random.nextFloat() - 0.5D) * 0.5D;
                 
-                level.addParticle(
+                level().addParticle(
                     ParticleTypes.PORTAL,
                     pos.x, pos.y, pos.z,
                     vx, vy, vz
@@ -114,7 +114,7 @@ public class NetherPortalEntity extends BreakablePortalEntity {
         }
         
         if (random.nextInt(800) == 0) {
-            level.playLocalSound(
+            level().playLocalSound(
                 getX(),
                 getY(),
                 getZ(),

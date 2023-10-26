@@ -43,14 +43,13 @@ public class IPModEntry {
         FMLJavaModLoadingContext.get().getModEventBus().register(AxisArgumentType.class);
 
         IPModMain.init();
-        RequiemCompat.init();
 
         IPRegistry.registerEntities(FMLJavaModLoadingContext.get().getModEventBus());
-        
+
         IPRegistry.registerMyDimensionsFabric();
 
         IPRegistry.registerChunkGenerators();
-        
+
         if (ModList.get().isLoaded("dimthread")) {
             O_O.isDimensionalThreadingPresent = true;
             Helper.log("Dimensional Threading is present");
@@ -58,7 +57,7 @@ public class IPModEntry {
         else {
             Helper.log("Dimensional Threading is not present");
         }
-        
+
         if (O_O.getIsPehkuiPresent()) {
             PehkuiInterfaceInitializer.init();
             Helper.log("Pehkui is present");
@@ -66,7 +65,7 @@ public class IPModEntry {
         else {
             Helper.log("Pehkui is not present");
         }
-        
+
         if (ModList.get().isLoaded("gravitychanger")) {
             //GravityChangerInterface.invoker = new GravityChangerInterface.OnGravityChangerPresent(); // TODO @Nick1st GravityAPI does not exist for Forge
             Helper.log("Gravity API is present");
@@ -74,7 +73,7 @@ public class IPModEntry {
         else {
             Helper.log("Gravity API is not present");
         }
-        
+
     }
 
     @SubscribeEvent
@@ -88,5 +87,5 @@ public class IPModEntry {
         Helper.log(MODID + " registerCommands called");
         PortalCommand.register(event.getDispatcher());
     }
-    
+
 }

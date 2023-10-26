@@ -1,21 +1,18 @@
 package qouteall.imm_ptl.core.platform_specific;
 
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import org.apache.commons.lang3.Validate;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.compat.PehkuiInterface;
 import qouteall.imm_ptl.core.ducks.IECamera;
 import qouteall.imm_ptl.core.portal.Portal;
-import qouteall.imm_ptl.core.render.context_management.PortalRendering;
-import qouteall.imm_ptl.core.render.context_management.RenderStates;
 import virtuoel.pehkui.api.ScaleData;
 import virtuoel.pehkui.api.ScaleTypes;
 import virtuoel.pehkui.util.ScaleUtils;
@@ -154,7 +151,7 @@ public class PehkuiInterfaceInitializer {
         float oldScale = PehkuiInterface.invoker.getBaseScale(entity);
         float newScale = transformScale(portal, oldScale);
         
-        if (!entity.level.isClientSide && isScaleIllegal(newScale)) {
+        if (!entity.level().isClientSide && isScaleIllegal(newScale)) {
             newScale = 1;
             entity.sendSystemMessage(
                 Component.literal("Scale out of range")
@@ -163,7 +160,7 @@ public class PehkuiInterfaceInitializer {
         
         PehkuiInterface.invoker.setBaseScale(entity, newScale);
         
-        if (!entity.level.isClientSide) {
+        if (!entity.level().isClientSide) {
             McHelper.setEyePos(entity, eyePos, lastTickEyePos);
             McHelper.updateBoundingBox(entity);
             

@@ -2,10 +2,10 @@ package qouteall.imm_ptl.core.chunk_loading;
 
 public enum PerformanceLevel {
     good, medium, bad;
-    
+
     public static PerformanceLevel getClientPerformanceLevel(
-        int averageFPS,
-        int averageFreeMemoryMB
+            int averageFPS,
+            int averageFreeMemoryMB
     ) {
         if (averageFPS > 50 && averageFreeMemoryMB > 800) {
             return good;
@@ -17,8 +17,8 @@ public enum PerformanceLevel {
             return bad;
         }
     }
-    
-    
+
+
     public static PerformanceLevel getServerPerformanceLevel(float tickTimeMs) {
         if (tickTimeMs < 40) {
             return good;
@@ -30,7 +30,7 @@ public enum PerformanceLevel {
             return bad;
         }
     }
-    
+
     public static int getVisiblePortalRangeChunks(PerformanceLevel level) {
         if (level == good) {
             return 8;
@@ -42,7 +42,7 @@ public enum PerformanceLevel {
             return 1;
         }
     }
-    
+
     public static int getIndirectVisiblePortalRangeChunks(PerformanceLevel level) {
         if (level == good) {
             return 2;
@@ -54,9 +54,9 @@ public enum PerformanceLevel {
             return 0;
         }
     }
-    
+
     public static int getIndirectLoadingRadiusCap(
-        PerformanceLevel level
+            PerformanceLevel level
     ) {
         if (level == good) {
             return 32;
@@ -68,9 +68,9 @@ public enum PerformanceLevel {
             return 2;
         }
     }
-    
+
     public static int getPortalRenderingDistance(
-        PerformanceLevel level, int originalDistance
+            PerformanceLevel level, int originalDistance
     ) {
         if (level == good) {
             return originalDistance;

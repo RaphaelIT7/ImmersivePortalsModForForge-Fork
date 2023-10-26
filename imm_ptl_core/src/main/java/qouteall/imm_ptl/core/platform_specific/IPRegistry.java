@@ -9,7 +9,7 @@ import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
-import net.minecraft.world.level.material.Material;
+import net.minecraft.world.level.material.MapColor;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.DeferredRegister;
@@ -32,16 +32,16 @@ public class IPRegistry {
     @SubscribeEvent
     public static void registerBlocks(RegisterEvent event) {
         event.register(ForgeRegistries.Keys.BLOCKS, handler -> handler.register(
-            new ResourceLocation("immersive_portals" , "nether_portal_block"),
-            new PortalPlaceholderBlock(BlockBehaviour.Properties
-                .of(Material.PORTAL)
-                .noCollission()
-                .sound(SoundType.GLASS)
-                .strength(1.0f, 0)
-                .noOcclusion()
-                .noLootTable()
-                .lightLevel((s)->15)
-            )));
+                new ResourceLocation("immersive_portals" , "nether_portal_block"),
+                new PortalPlaceholderBlock(BlockBehaviour.Properties
+                        .of()
+                        .noCollission()
+                        .sound(SoundType.GLASS)
+                        .strength(1.0f, 0)
+                        .noOcclusion()
+                        .noLootTable()
+                        .lightLevel((s)->15)
+                )));
     }
 
     public static final DeferredRegister<EntityType<?>> ENTITY_TYPES =
@@ -130,7 +130,7 @@ public class IPRegistry {
     public static void registerEntities(IEventBus bus) {
         ENTITY_TYPES.register(bus);
     }
-    
+
     public static void registerChunkGenerators() {
         //it should not be serialized
 //        Registry.register(
@@ -138,6 +138,6 @@ public class IPRegistry {
 //            new Identifier("immersive_portals:error_terrain_gen"),
 //            ErrorTerrainGenerator.codec
 //        );
-        
+
     }
 }
