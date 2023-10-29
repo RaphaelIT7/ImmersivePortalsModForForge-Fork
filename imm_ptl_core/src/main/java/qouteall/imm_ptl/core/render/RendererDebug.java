@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.Vec3;
 import org.lwjgl.opengl.GL11;
+import org.slf4j.LoggerFactory;
 import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.imm_ptl.core.render.context_management.PortalRendering;
 import qouteall.imm_ptl.core.render.context_management.RenderStates;
@@ -49,6 +50,7 @@ public class RendererDebug extends PortalRenderer {
     }
     
     protected void doRenderPortal(PortalRenderable portal, PoseStack matrixStack) {
+        LoggerFactory.getLogger("immersive_portals").info("HI");
         if (RenderStates.getRenderedPortalNum() != 0) {
             return;
         }
@@ -66,7 +68,7 @@ public class RendererDebug extends PortalRenderer {
             Minecraft.ON_OSX
         );
         GL11.glDisable(GL11.GL_STENCIL_TEST);
-        
+        LoggerFactory.getLogger("immersive_portals").info("HI4");
         renderPortalContent(portal);
     
         PortalRendering.popPortalLayer();

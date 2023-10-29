@@ -4,50 +4,101 @@ import com.google.common.collect.Lists;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.*;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.dimension.end.EndDragonFight;
+import net.minecraft.world.level.material.MapColor;
+import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.registries.ForgeRegistries;
 import qouteall.imm_ptl.core.portal.EndPortalEntity;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegistryObject;
-import qouteall.imm_ptl.peripheral.alternate_dimension.AlternateDimensions;
-import qouteall.imm_ptl.peripheral.alternate_dimension.ChaosBiomeSource;
-import qouteall.imm_ptl.peripheral.alternate_dimension.ErrorTerrainGenerator;
-import qouteall.imm_ptl.peripheral.alternate_dimension.FormulaGenerator;
-import qouteall.imm_ptl.peripheral.alternate_dimension.NormalSkylandGenerator;
+import qouteall.imm_ptl.peripheral.alternate_dimension.*;
 import qouteall.imm_ptl.peripheral.dim_stack.DimStackManagement;
 import qouteall.imm_ptl.peripheral.guide.IPOuterClientMisc;
 import qouteall.imm_ptl.peripheral.mixin.common.end_portal.IEEndDragonFight;
+import qouteall.imm_ptl.peripheral.platform_specific.PeripheralModEntry;
+import qouteall.imm_ptl.peripheral.platform_specific.PeripheralModEntryClient;
 import qouteall.imm_ptl.peripheral.portal_generation.IntrinsicPortalGeneration;
 import qouteall.q_misc_util.LifecycleHack;
 import qouteall.q_misc_util.MiscHelper;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 public class PeripheralModMain {
-    
-    public static Block portalHelperBlock;
-    public static BlockItem portalHelperBlockItem;
-    
+    public static final String MODID = "immersive_portals";
+
+    private static void registerBlockItems() {
+        //PeripheralModMain.registerCommandStickTypes();
+
+        CommandStickItem.init();
+    }
+
+    @SubscribeEvent
+    public void buildContents(BuildCreativeModeTabContentsEvent event) {
+        // Add to creative tab
+        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
+            event.accept(PORTAL_HELPER_ITEM.get().getDefaultInstance());
+            event.accept(PORTAL_HELPER_ITEM.get().getDefaultInstance());
+        }
+    }
+    @SubscribeEvent
+    public static void onClientSetup(FMLClientSetupEvent event) {
+        PeripheralModEntryClient.onInitializeClient();
+    }
+
+    public static class PortalHelperItem extends BlockItem {
+
+        public PortalHelperItem(Block block, Properties settings) {
+            super(block, settings);
+        }
+
+        @Override
+        public InteractionResult useOn(UseOnContext context) {
+            if (context.getLevel().isClientSide()) {
+                if (context.getPlayer() != null) {
+                    IPOuterClientMisc.onClientPlacePortalHelper();
+                }
+            }
+
+            return super.useOn(context);
+        }
+
+        @Override
+        public void appendHoverText(ItemStack stack, @Nullable Level world, List<Component> tooltip, TooltipFlag context) {
+            super.appendHoverText(stack, world, tooltip, context);
+
+            tooltip.add(Component.translatable("imm_ptl.portal_helper_tooltip"));
+        }
+    }
+
+    private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, MODID);
+    private static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MODID);
+
+    public static final RegistryObject<Block> PORTAL_HELPER_BLOCK = BLOCKS.register("portal_helper", () -> new Block(BlockBehaviour.Properties.of().mapColor(MapColor.METAL).noOcclusion().isRedstoneConductor((a, b, c) -> false)));
+    public static final RegistryObject<Item> PORTAL_HELPER_ITEM = ITEMS.register("portal_helper", () -> new PortalHelperItem(PORTAL_HELPER_BLOCK.get(), new Item.Properties()));
+    public static final RegistryObject<Item> COMMAND_STICK_ITEM = ITEMS.register("command_stick", () -> new CommandStickItem(new Item.Properties()));
+
+
     @OnlyIn(Dist.CLIENT)
     public static void initClient() {
         IPOuterClientMisc.initClient();
     }
-
-    private static final DeferredRegister<Codec<? extends ChunkGenerator>> CHUNK_GENERATOR = DeferredRegister.create(BuiltInRegistries.CHUNK_GENERATOR.key(), "immersive_portals");
-    private static final DeferredRegister<Codec<? extends BiomeSource>> BIOME_SOURCE = DeferredRegister.create(BuiltInRegistries.BIOME_SOURCE.key(), "immersive_portals");
-
-    public static final RegistryObject<Codec<? extends ChunkGenerator>> ERROR_TERRAIN_GENERATOR = CHUNK_GENERATOR.register("error_terrain_generator", () -> ErrorTerrainGenerator.codec);
-    public static final RegistryObject<Codec<? extends ChunkGenerator>> NORMAL_SKYLAND_GENERATOR = CHUNK_GENERATOR.register("normal_skyland_generator", () -> ErrorTerrainGenerator.codec);
-
-    public static final RegistryObject<Codec<? extends BiomeSource>> CHAOS_BIOME_SOURCE = BIOME_SOURCE.register("chaos_biome_source", () -> ChaosBiomeSource.CODEC);
 
     public static void init() {
         FormulaGenerator.init();
@@ -61,7 +112,17 @@ public class PeripheralModMain {
         LifecycleHack.markNamespaceStable("immersive_portals");
         LifecycleHack.markNamespaceStable("imm_ptl");
 
+        FMLJavaModLoadingContext.get().getModEventBus().register(PeripheralModEntry.class);
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(CommandStickItem::buildContents);
+        registerBlockItems(); //TODO Move this to a real DeferredRegistry @Nick1st
+        BLOCKS.register(FMLJavaModLoadingContext.get().getModEventBus());
+        ITEMS.register(FMLJavaModLoadingContext.get().getModEventBus());
+        PeripheralRegistries.CHUNK_GENERATOR.register(FMLJavaModLoadingContext.get().getModEventBus());
+        PeripheralRegistries.BIOME_SOURCE.register(FMLJavaModLoadingContext.get().getModEventBus());
+        CommandStickItem.CommandStickData.register(FMLJavaModLoadingContext.get().getModEventBus());
+
         CommandStickItem.init();
+
 
         //CommandStickItem.registerCommandStickTypes();
 
@@ -97,7 +158,7 @@ public class PeripheralModMain {
         };*/
     }
     
-    public static void registerCommandStickTypes() {
+   /* public static void registerCommandStickTypes() {
 //        registerPortalSubCommandStick("delete_portal");
 //        registerPortalSubCommandStick("remove_connected_portals");
 //        registerPortalSubCommandStick("eradicate_portal_cluster");
@@ -314,5 +375,5 @@ public class PeripheralModMain {
 //        }
 //    }
 
-
+*/
 }

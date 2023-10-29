@@ -1,21 +1,26 @@
 package qouteall.imm_ptl.core.mixin.client.render.framebuffer;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.platform.GlStateManager;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.opengl.ARBFramebufferObject;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL30C;
+import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 import qouteall.imm_ptl.core.CHelper;
 import qouteall.imm_ptl.core.IPCGlobal;
 import qouteall.imm_ptl.core.ducks.IEFrameBuffer;
 
+import javax.annotation.Nullable;
+import java.nio.IntBuffer;
 import java.util.Objects;
 
 import static org.lwjgl.opengl.GL11.GL_DEPTH_COMPONENT;
@@ -36,7 +41,7 @@ public abstract class MixinRenderTarget implements IEFrameBuffer {
     
     @Shadow
     public abstract void resize(int width, int height, boolean clearError);
-    
+
     @Inject(method = "<init>", at = @At("RETURN"))
     private void onInit(
         boolean useDepth,
@@ -44,8 +49,8 @@ public abstract class MixinRenderTarget implements IEFrameBuffer {
     ) {
         isStencilBufferEnabled = false;
     }
-    
-    @ModifyArgs(
+
+    @WrapOperation(
         method = "createBuffers",
         at = @At(
             value = "INVOKE",
@@ -53,14 +58,18 @@ public abstract class MixinRenderTarget implements IEFrameBuffer {
             remap = false
         )
     )
-    private void modifyTexImage2D(Args args) {
-        if (Objects.equals(args.get(2), GL_DEPTH_COMPONENT)) {
+    private void modifyTexImage2D(int pTarget, int pLevel, int pInternalFormat, int pWidth, int pHeight, int pBorder, int pFormat, int pType, @Nullable IntBuffer pPixels, Operation<Void> original) {
+        if (Objects.equals(pHeight, GL_DEPTH_COMPONENT)) {
             if (isStencilBufferEnabled) {
-                args.set(2, IPCGlobal.useSeparatedStencilFormat ? GL_DEPTH32F_STENCIL8 : GL_DEPTH24_STENCIL8);
-                args.set(6, ARBFramebufferObject.GL_DEPTH_STENCIL);
-                args.set(7, IPCGlobal.useSeparatedStencilFormat ? GL_FLOAT_32_UNSIGNED_INT_24_8_REV : GL30.GL_UNSIGNED_INT_24_8);
+                pLevel = IPCGlobal.useSeparatedStencilFormat ? GL_DEPTH32F_STENCIL8 : GL_DEPTH24_STENCIL8;
+                pBorder = ARBFramebufferObject.GL_DEPTH_STENCIL;
+                pFormat = IPCGlobal.useSeparatedStencilFormat ? GL_FLOAT_32_UNSIGNED_INT_24_8_REV : GL30.GL_UNSIGNED_INT_24_8;
+                original.call(pTarget, pLevel, pInternalFormat, pWidth, pHeight, pBorder, pFormat, pType, pPixels);
+                return;
             }
         }
+
+        original.call(pTarget, pLevel, pInternalFormat, pWidth, pHeight, pBorder, pFormat, pType, pPixels);
     }
 
 //    @Redirect(
@@ -97,8 +106,8 @@ public abstract class MixinRenderTarget implements IEFrameBuffer {
 //            );
 //        }
 //    }
-    
-    @ModifyArgs(
+
+    @WrapOperation(
         method = "createBuffers",
         at = @At(
             value = "INVOKE",
@@ -106,12 +115,15 @@ public abstract class MixinRenderTarget implements IEFrameBuffer {
             remap = false
         )
     )
-    private void modifyFrameBufferTexture2D(Args args) {
-        if (Objects.equals(args.get(1), GL30C.GL_DEPTH_ATTACHMENT)) {
+    private void modifyFrameBufferTexture2D(int pTarget, int pAttachment, int pTexTarget, int pWhatever, int pLevel, Operation<Void> original) {
+        if (Objects.equals(pAttachment, GL30C.GL_DEPTH_ATTACHMENT)) {
             if (isStencilBufferEnabled) {
-                args.set(1, GL30.GL_DEPTH_STENCIL_ATTACHMENT);
+                original.call(pTarget, GL30C.GL_DEPTH_ATTACHMENT, pTexTarget, pWhatever, pLevel);
+                return;
             }
         }
+
+        original.call(pTarget, pAttachment, pTexTarget, pWhatever, pLevel);
     }
 
 //    @Redirect(
@@ -146,7 +158,7 @@ public abstract class MixinRenderTarget implements IEFrameBuffer {
     
     @Override
     public boolean getIsStencilBufferEnabled() {
-        return isStencilBufferEnabled;
+        return this.isStencilBufferEnabled;
     }
     
     @Override

@@ -39,6 +39,6 @@ public class MixinRenderSystem_Clipping {
                 FrontClipping.unsetClippingUniform();
             }
         }
-        
+
     }
 }

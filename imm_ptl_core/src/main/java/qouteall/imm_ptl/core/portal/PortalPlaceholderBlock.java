@@ -20,6 +20,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import qouteall.imm_ptl.core.McHelper;
+import qouteall.imm_ptl.core.platform_specific.IPRegistry;
 import qouteall.imm_ptl.core.portal.nether_portal.BreakablePortalEntity;
 
 public class PortalPlaceholderBlock extends Block {
@@ -49,7 +50,8 @@ public class PortalPlaceholderBlock extends Block {
         10.0D
     );
     
-    public static final PortalPlaceholderBlock instance = new PortalPlaceholderBlock(
+    //public static final PortalPlaceholderBlock instance = (PortalPlaceholderBlock) IPRegistry.NETHER_PORTAL_BLOCK.get();
+    /*new PortalPlaceholderBlock(
         Properties.of()
             .noCollission()
             .sound(SoundType.GLASS)
@@ -57,7 +59,7 @@ public class PortalPlaceholderBlock extends Block {
             .noOcclusion()
             .noLootTable()
             .lightLevel((s) -> 15)
-    );
+    );*/
     
     public PortalPlaceholderBlock(Properties properties) {
         super(properties);
@@ -136,7 +138,7 @@ public class PortalPlaceholderBlock extends Block {
         if (hitResult.getType() == HitResult.Type.BLOCK) {
             if (hitResult instanceof BlockHitResult blockHitResult) {
                 Block hittingBlock = world.getBlockState(blockHitResult.getBlockPos()).getBlock();
-                return hittingBlock == PortalPlaceholderBlock.instance;
+                return hittingBlock == IPRegistry.NETHER_PORTAL_BLOCK.get();
             }
         }
         return false;

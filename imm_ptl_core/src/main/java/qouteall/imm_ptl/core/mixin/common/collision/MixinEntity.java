@@ -1,5 +1,6 @@
 package qouteall.imm_ptl.core.mixin.common.collision;
 
+import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.chat.Component;
@@ -14,6 +15,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -28,6 +30,7 @@ import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.IPMcHelper;
 import qouteall.imm_ptl.core.api.ImmPtlEntityExtension;
 import qouteall.imm_ptl.core.collision.PortalCollisionHandler;
+import qouteall.imm_ptl.core.compat.IPModInfoChecking;
 import qouteall.imm_ptl.core.ducks.IEEntity;
 import qouteall.imm_ptl.core.miscellaneous.IPVanillaCopy;
 import qouteall.imm_ptl.core.portal.EndPortalEntity;
@@ -37,7 +40,7 @@ import qouteall.q_misc_util.my_util.LimitedLogger;
 
 @Mixin(Entity.class)
 public abstract class MixinEntity implements IEEntity, ImmPtlEntityExtension {
-    
+    private static final Logger LOGGER = LogUtils.getLogger();
     @Nullable
     @Unique
     private PortalCollisionHandler ip_portalCollisionHandler;
@@ -135,7 +138,7 @@ public abstract class MixinEntity implements IEEntity, ImmPtlEntityExtension {
     //don't burn when jumping into end portal
     // TODO make it work for all portals
     @Inject(
-        method = "Lnet/minecraft/world/entity/Entity;fireImmune()Z",
+        method = "fireImmune()Z",
         at = @At("HEAD"),
         cancellable = true
     )
@@ -146,8 +149,8 @@ public abstract class MixinEntity implements IEEntity, ImmPtlEntityExtension {
         }
     }
     
-    @Redirect(
-        method = "Lnet/minecraft/world/entity/Entity;checkInsideBlocks()V",
+    /*@Redirect(
+        method = "checkInsideBlocks()V",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/world/entity/Entity;getBoundingBox()Lnet/minecraft/world/phys/AABB;"
@@ -155,7 +158,7 @@ public abstract class MixinEntity implements IEEntity, ImmPtlEntityExtension {
     )
     private AABB redirectBoundingBoxInCheckingBlockCollision(Entity entity) {
         return ip_getActiveCollisionBox(entity.getBoundingBox());
-    }
+    }*/
     
     @Inject(
         method = "checkInsideBlocks",

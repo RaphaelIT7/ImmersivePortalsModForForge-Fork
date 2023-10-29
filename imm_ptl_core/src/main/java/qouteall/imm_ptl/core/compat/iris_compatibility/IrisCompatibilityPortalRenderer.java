@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.Vec3;
 import org.lwjgl.opengl.GL11;
+import org.slf4j.LoggerFactory;
 import qouteall.imm_ptl.core.CHelper;
 import qouteall.imm_ptl.core.compat.IPPortingLibCompat;
 import qouteall.imm_ptl.core.portal.Portal;
@@ -97,7 +98,7 @@ public class IrisCompatibilityPortalRenderer extends PortalRenderer {
         client.getMainRenderTarget().bindWrite(true);
 
         PortalRendering.pushPortalLayer(portal.getPortalLike());
-
+        LoggerFactory.getLogger("immersive_portals").info("HI2");
         renderPortalContent(portal);
 
         PortalRendering.popPortalLayer();

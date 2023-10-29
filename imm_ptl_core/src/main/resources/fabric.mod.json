@@ -6,7 +6,7 @@
   "name": "Immersive Portals Core",
   "description": "The core functionality of see-through portals and seamless teleportation. Provide the portal commands and datapack-based custom portal generation. The core does not change vanila nether portal and end portal mechanics.",
   "authors": [
-    "qouteall"
+    "qouteall", "Other Contributors (see GitHub)"
   ],
   "contact": {
     "homepage": "https://qouteall.fun/immptl",
@@ -19,6 +19,9 @@
   "icon": "assets/immersive_portals/icon.png",
   "environment": "*",
   "entrypoints": {
+    "preLaunch": [
+      "com.llamalad7.mixinextras.MixinExtrasBootstrap::init"
+    ],
     "main": [
       "qouteall.imm_ptl.core.platform_specific.IPModEntry"
     ],
@@ -65,6 +68,5 @@
     "polymer:disable_mixin": {
       "compat.immersive_portals.ip_IPNetworkingMixin": "Implemented"
     }
-  },
-  "accessWidener": "imm_ptl.accesswidener"
+  }
 }

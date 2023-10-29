@@ -150,7 +150,7 @@ public class TransformationManager {
                 oldCameraRotation.hamiltonProduct(
                     portal.getRotation().getConjugated()
                 );
-            
+
             Direction oldBaseGravityDir = GravityChangerInterface.invoker.getGravityDirection(player);
             Direction newBaseGravityDir = portal.getTeleportedGravityDirection(oldBaseGravityDir);
             
@@ -278,7 +278,7 @@ public class TransformationManager {
     }
     
     public static boolean isCalculatingViewBobbingOffset = false;
-    
+
     @OnlyIn(Dist.CLIENT)
     public static class RemoteCallables {
         public static void enableIsometricView(float viewLength) {

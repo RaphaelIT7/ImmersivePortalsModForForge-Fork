@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.HitResult;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import qouteall.imm_ptl.core.platform_specific.IPRegistry;
 import qouteall.imm_ptl.core.portal.PortalPlaceholderBlock;
 
 @Mixin(ThrowableProjectile.class)
@@ -29,7 +30,7 @@ public class MixinThrowableProjectile {
     ) {
         BlockState blockState = original.call(level, blockPos);
         
-        if (blockState.getBlock() == PortalPlaceholderBlock.instance) {
+        if (blockState.getBlock() == IPRegistry.NETHER_PORTAL_BLOCK.get()) {
             shouldCancelHit.set(true);
         }
         else {

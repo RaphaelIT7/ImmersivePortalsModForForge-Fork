@@ -6,9 +6,11 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.pipeline.newshader.NewWorldRenderingPipeline;
+import net.coderbot.iris.shadows.ShadowRenderTargets;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.minecraft.world.phys.Vec3;
 import org.lwjgl.opengl.GL11;
+import org.slf4j.LoggerFactory;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.compat.IPPortingLibCompat;
 import qouteall.imm_ptl.core.portal.Portal;
@@ -127,21 +129,21 @@ public class ExperimentalIrisPortalRenderer extends PortalRenderer {
     public void invokeWorldRendering(WorldRenderInfo worldRenderInfo) {
         WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipeline().get();
 
-//        ShadowMapSwapper.Storage shadowMapCache = null;
-//
-//        if (pipeline instanceof NewWorldRenderingPipeline newWorldRenderingPipeline) {
-//            ShadowRenderTargets shadowRenderTargets = ((IEIrisNewWorldRenderingPipeline) newWorldRenderingPipeline).ip_getShadowRenderTargets();
-//
-//            if (shadowRenderTargets != null) {
-//                ShadowMapSwapper shadowMapSwapper = ((IEIrisShadowRenderTargets) shadowRenderTargets).getShadowMapSwapper();
-//
-//                shadowMapCache = shadowMapSwapper.acquireStorage();
-//
-//                if (shadowMapCache != null) {
-//                    shadowMapCache.copyFromIrisShadowRenderTargets();
-//                }
-//            }
-//        }
+        ShadowMapSwapper.Storage shadowMapCache = null;
+
+        if (pipeline instanceof NewWorldRenderingPipeline newWorldRenderingPipeline) {
+            ShadowRenderTargets shadowRenderTargets = ((IEIrisNewWorldRenderingPipeline) newWorldRenderingPipeline).ip_getShadowRenderTargets();
+
+            if (shadowRenderTargets != null) {
+                ShadowMapSwapper shadowMapSwapper = ((IEIrisShadowRenderTargets) shadowRenderTargets).getShadowMapSwapper();
+
+                shadowMapCache = shadowMapSwapper.acquireStorage();
+
+                if (shadowMapCache != null) {
+                    shadowMapCache.copyFromIrisShadowRenderTargets();
+                }
+            }
+        }
 
         SystemTimeUniforms.COUNTER.beginFrame(); // is it necessary?
         super.invokeWorldRendering(worldRenderInfo);
@@ -244,7 +246,7 @@ public class ExperimentalIrisPortalRenderer extends PortalRenderer {
         }
 
         setStencilStateForWorldRendering();
-
+        LoggerFactory.getLogger("immersive_portals").info("HI1");
         renderPortalContent(portal);
 
         if (!portalLike.isFuseView()) {

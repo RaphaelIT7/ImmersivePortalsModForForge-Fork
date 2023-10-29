@@ -65,14 +65,14 @@ allprojects {
         // Pehkui
         implementation fg.deobf("com.github.Virtuoel:Pehkui:${project.pehkui_version}")
         // Twilight Forest
-        api fg.deobf("teamtwilight:twilightforest:${project.twilightforest_version}:universal")
+        //api fg.deobf("teamtwilight:twilightforest:${project.twilightforest_version}:universal")
 //        api fg.deobf("curse.maven:twilightforest-227639:${project.twilightforest_fileid}")
         // Flywheel
         //compileOnly fg.deobf("com.jozufozu.flywheel:flywheel-forge-1.19.3:${project.flywheel_version}") // TODO @Nick1st there's no flywheel yet
         // Rubidium
         api fg.deobf("curse.maven:rubidium-574856:${project.rubidium_fileid}")
         // Oculus
-        compileOnly fg.deobf("curse.maven:oculus-581495:${project.oculus_fileid}") // TODO @Nick1st Oculus support currently non functioning, no Oculus for 1.19 yet
+        api fg.deobf("curse.maven:oculus-581495:${project.oculus_fileid}") // TODO @Nick1st Oculus support currently non functioning, no Oculus for 1.19 yet
         // Curios
         runtimeOnly fg.deobf("top.theillusivec4.curios:curios-forge:${project.curios_version}")
         compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:${project.curios_version}:api")
@@ -88,14 +88,16 @@ allprojects {
 
         implementation 'com.demonwav.mcdev:annotations:1.0'
 
-        implementation(annotationProcessor("io.github.llamalad7:mixinextras-common:${project.mixin_extra_version}"))
-        implementation(jarJar("io.github.llamalad7:mixinextras-forge:${project.mixin_extra_version}")) {
+        implementation(annotationProcessor("com.github.llamalad7.mixinextras:mixinextras-common:${project.mixin_extra_version}"))
+        implementation(jarJar("com.github.llamalad7.mixinextras:mixinextras-forge:${project.mixin_extra_version}")) {
             jarJar.ranged(it, "[${project.mixin_extra_version},)")
         }
 
         // Cloth config
         api(fg.deobf("me.shedaniel.cloth:cloth-config-forge:${project.cloth_config_version}"))
     }
+
+    jarJar.enable()
 
     minecraft {
         mappings channel: 'parchment', version: "${project.mapping_version}-${project.minecraft_version}"

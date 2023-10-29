@@ -6,14 +6,18 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientChunkCache;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.SectionPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.chunk.ChunkStatus;
+import net.minecraft.world.level.chunk.EmptyLevelChunk;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.lighting.LevelLightEngine;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.apache.commons.lang3.Validate;
@@ -47,20 +51,33 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
     // so we use two maps to reduce synchronization.
     // the main thread accesses this map, without synchronization
     protected final Long2ObjectOpenHashMap<LevelChunk> chunkMapForMainThread =
-            new Long2ObjectOpenHashMap<>();
+        new Long2ObjectOpenHashMap<>();
     // other threads read this map, with synchronization
     protected final Long2ObjectOpenHashMap<LevelChunk> chunkMapForOtherThreads =
-            new Long2ObjectOpenHashMap<>();
+        new Long2ObjectOpenHashMap<>();
 
     public final Thread mainThread;
 
     public static final SignalArged<LevelChunk> clientChunkLoadSignal = new SignalArged<>();
     public static final SignalArged<LevelChunk> clientChunkUnloadSignal = new SignalArged<>();
-
+    public final LevelChunk emptyChunk;
+    public final ClientLevel world;
+    protected final LevelLightEngine lightingProvider;
     public ImmPtlClientChunkMap(ClientLevel clientWorld, int loadDistance) {
         super(clientWorld, 1);
         // the chunk array is unused. make it small by passing 1 as load distance to super constructor
-
+        this.world = clientWorld;
+        this.emptyChunk = new EmptyLevelChunk(
+                clientWorld, new ChunkPos(0, 0),
+                clientWorld.registryAccess()
+                        .registryOrThrow(Registries.BIOME)
+                        .getHolderOrThrow(Biomes.PLAINS)
+        );
+        this.lightingProvider = new LevelLightEngine(
+                this,
+                true,
+                clientWorld.dimensionType().hasSkyLight()
+        );
         mainThread = ((IEMinecraftClient) Minecraft.getInstance()).ip_getRunningThread();
     }
 
@@ -76,8 +93,8 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
             });
 
             O_O.postClientChunkUnloadEvent(chunk);
-            this.level.unload(chunk);
-            SodiumInterface.invoker.onClientChunkUnloaded(level, x, z);
+            world.unload(chunk);
+            SodiumInterface.invoker.onClientChunkUnloaded(world, x, z);
             clientChunkUnloadSignal.emit(chunk);
         }
     }
@@ -137,16 +154,16 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
 
     @Override
     public LevelChunk replaceWithPacketData(
-            int x, int z,
-            FriendlyByteBuf buf, CompoundTag nbt,
-            Consumer<ClientboundLevelChunkPacketData.BlockEntityTagOutput> consumer
+        int x, int z,
+        FriendlyByteBuf buf, CompoundTag nbt,
+        Consumer<ClientboundLevelChunkPacketData.BlockEntityTagOutput> consumer
     ) {
         Validate.isTrue(Thread.currentThread() == mainThread);
 
         long chunkPosLong = ChunkPos.asLong(x, z);
         LevelChunk worldChunk = chunkMapForMainThread.get(chunkPosLong);
         if (worldChunk == null) {
-            worldChunk = new LevelChunk(this.level, new ChunkPos(x, z));
+            worldChunk = new LevelChunk(this.world, new ChunkPos(x, z));
             loadChunkDataFromPacket(buf, nbt, worldChunk, consumer);
 
             LevelChunk worldChunkToPut = worldChunk; // lambda can only capture effectively final variables
@@ -158,9 +175,9 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
             loadChunkDataFromPacket(buf, nbt, worldChunk, consumer);
         }
 
-        this.level.onChunkLoaded(new ChunkPos(x, z));
+        world.onChunkLoaded(new ChunkPos(x, z));
         O_O.postClientChunkLoadEvent(worldChunk);
-        SodiumInterface.invoker.onClientChunkLoaded(level, x, z);
+        SodiumInterface.invoker.onClientChunkLoaded(world, x, z);
         clientChunkLoadSignal.emit(worldChunk);
 
         return worldChunk;
@@ -171,30 +188,30 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
      * {@link net.minecraft.world.level.chunk.LinearPalette#read(FriendlyByteBuf)}
      */
     private void loadChunkDataFromPacket(
-            FriendlyByteBuf buf,
-            CompoundTag nbt,
-            LevelChunk worldChunk,
-            Consumer<ClientboundLevelChunkPacketData.BlockEntityTagOutput> consumer
+        FriendlyByteBuf buf,
+        CompoundTag nbt,
+        LevelChunk worldChunk,
+        Consumer<ClientboundLevelChunkPacketData.BlockEntityTagOutput> consumer
     ) {
         try {
             worldChunk.replaceWithPacketData(buf, nbt, consumer);
         }
         catch (Exception e) {
             LOGGER.error(
-                    "Error deserializing chunk packet {} {}",
-                    worldChunk.getLevel().dimension().location(),
-                    worldChunk.getPos(),
-                    e
+                "Error deserializing chunk packet {} {}",
+                worldChunk.getLevel().dimension().location(),
+                worldChunk.getPos(),
+                e
             );
             CHelper.printChat(
-                    Component
-                            .literal("Failed to deserialize chunk packet. %s %s %s".formatted(
-                                    worldChunk.getLevel().dimension().location(),
-                                    worldChunk.getPos().x, worldChunk.getPos().z
-                            ))
-                            .append(Component.literal(" Report issue:"))
-                            .append(McHelper.getLinkText(O_O.getIssueLink()))
-                            .withStyle(ChatFormatting.RED)
+                Component
+                    .literal("Failed to deserialize chunk packet. %s %s %s".formatted(
+                        worldChunk.getLevel().dimension().location(),
+                        worldChunk.getPos().x, worldChunk.getPos().z
+                    ))
+                    .append(Component.literal(" Report issue:"))
+                    .append(McHelper.getLinkText(O_O.getIssueLink()))
+                    .withStyle(ChatFormatting.RED)
             );
 
             throw new RuntimeException(e);
@@ -231,8 +248,8 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
 
     @Override
     public void onLightUpdate(LightLayer lightType, SectionPos chunkSectionPos) {
-        ClientWorldLoader.getWorldRenderer(level.dimension())
-                .setSectionDirty(chunkSectionPos.x(), chunkSectionPos.y(), chunkSectionPos.z());
+        ClientWorldLoader.getWorldRenderer(world.dimension())
+            .setSectionDirty(chunkSectionPos.x(), chunkSectionPos.y(), chunkSectionPos.z());
     }
-
+    
 }

@@ -17,6 +17,7 @@ import net.minecraft.client.renderer.RenderBuffers;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -24,9 +25,11 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
+import org.slf4j.LoggerFactory;
 import qouteall.imm_ptl.core.CHelper;
 import qouteall.imm_ptl.core.ClientWorldLoader;
 import qouteall.imm_ptl.core.IPGlobal;
+import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.block_manipulation.BlockManipulationClient;
 import qouteall.imm_ptl.core.compat.iris_compatibility.IrisInterface;
 import qouteall.imm_ptl.core.compat.sodium_compatibility.SodiumInterface;
@@ -42,6 +45,7 @@ import qouteall.imm_ptl.core.render.context_management.RenderStates;
 import qouteall.imm_ptl.core.render.context_management.WorldRenderInfo;
 import qouteall.q_misc_util.my_util.LimitedLogger;
 
+import java.util.Objects;
 import java.util.Stack;
 import java.util.function.Consumer;
 
@@ -117,24 +121,24 @@ public class MyGameRenderer {
         if (!enablePortalCaveCulling) {
             client.smartCull = false;
         }
-        
+
         if (!PortalRendering.shouldEnableSodiumCaveCulling()) {
             client.smartCull = false;
         }
-        
+
         ResourceKey<Level> newDimension = newWorld.dimension();
-        
+
         LevelRenderer worldRenderer = ClientWorldLoader.getWorldRenderer(newDimension);
-        
+
         CHelper.checkGlError();
-        
+
         float tickDelta = RenderStates.getPartialTick();
-        
+
         IEGameRenderer ieGameRenderer = (IEGameRenderer) client.gameRenderer;
         DimensionRenderHelper helper =
-            ClientWorldLoader.getDimensionRenderHelper(newDimension);
+                ClientWorldLoader.getDimensionRenderHelper(newDimension);
         Camera newCamera = new Camera();
-        
+
         //store old state
         ClientLevel oldWorld = client.level;
         LevelRenderer oldWorldRenderer = client.levelRenderer;
@@ -142,32 +146,32 @@ public class MyGameRenderer {
         boolean oldNoClip = client.player.noPhysics;
         boolean oldDoRenderHand = ieGameRenderer.getDoRenderHand();
         ObjectArrayList<LevelRenderer.RenderChunkInfo> oldChunkInfoList =
-            ((IEWorldRenderer) oldWorldRenderer).portal_getChunkInfoList();
+                ((IEWorldRenderer) oldWorldRenderer).portal_getChunkInfoList();
         HitResult oldCrosshairTarget = client.hitResult;
         Camera oldCamera = client.gameRenderer.getMainCamera();
         PostChain oldTransparencyShader = ((IEWorldRenderer) worldRenderer).portal_getTransparencyShader();
         RenderBuffers oldRenderBuffers = ((IEWorldRenderer) worldRenderer).ip_getRenderBuffers();
         RenderBuffers oldClientRenderBuffers = client.renderBuffers();
         Frustum oldFrustum = ((IEWorldRenderer) worldRenderer).portal_getFrustum();
-        
+
         // the projection matrix contains view bobbing.
         // the view bobbing is related with scale
         Matrix4f oldProjectionMatrix = RenderSystem.getProjectionMatrix();
-        
+
         ObjectArrayList<LevelRenderer.RenderChunkInfo> newChunkInfoList = VisibleSectionDiscovery.takeList();
         ((IEWorldRenderer) oldWorldRenderer).portal_setChunkInfoList(newChunkInfoList);
-        
+
         Object irisPipeline = IrisInterface.invoker.getPipeline(worldRenderer);
-        
+
         //switch
         ((IEMinecraftClient) client).setWorldRenderer(worldRenderer);
         client.level = newWorld;
         ieGameRenderer.setLightmapTextureManager(helper.lightmapTexture);
-        
+
         client.getBlockEntityRenderDispatcher().level = newWorld;
         client.player.noPhysics = true;
         client.gameRenderer.setRenderHand(doRenderHand);
-        
+
         FogRendererContext.swappingManager.pushSwapping(newDimension);
         ((IEParticleManager) client.particleEngine).ip_setWorld(newWorld);
         if (BlockManipulationClient.remotePointedDim == newDimension) {
@@ -177,80 +181,80 @@ public class MyGameRenderer {
             client.hitResult = null;
         }
         ieGameRenderer.setCamera(newCamera);
-        
+
         RenderBuffers newRenderBuffers = null;
         if (IPGlobal.useSecondaryEntityVertexConsumer) {
             newRenderBuffers = acquireRenderBuffersObject();
             ((IEWorldRenderer) worldRenderer).ip_setRenderBuffers(newRenderBuffers);
             ((IEMinecraftClient) client).ip_setRenderBuffers(newRenderBuffers);
         }
-        
+
         Object newSodiumContext = SodiumInterface.invoker.createNewContext(renderDistance);
         SodiumInterface.invoker.switchContextWithCurrentWorldRenderer(newSodiumContext);
-        
+
         ((IEWorldRenderer) worldRenderer).portal_setTransparencyShader(null);
-        
+
         IrisInterface.invoker.setPipeline(worldRenderer, null);
-        
+
         //update lightmap
         if (!RenderStates.isDimensionRendered(newDimension)) {
             helper.lightmapTexture.updateLightTexture(0);
         }
-        
+
         //invoke rendering
         invokeWrapper.accept(() -> {
             client.getProfiler().push("render_portal_content");
             client.gameRenderer.renderLevel(
-                tickDelta,
-                Util.getNanos(),
-                new PoseStack()
+                    tickDelta,
+                    Util.getNanos(),
+                    new PoseStack()
             );
             client.getProfiler().pop();
         });
-        
+
         SodiumInterface.invoker.switchContextWithCurrentWorldRenderer(newSodiumContext);
-        
+
         //recover
-        
+
         ((IEMinecraftClient) client).setWorldRenderer(oldWorldRenderer);
         client.level = oldWorld;
         ieGameRenderer.setLightmapTextureManager(oldLightmap);
         client.getBlockEntityRenderDispatcher().level = oldWorld;
         client.player.noPhysics = oldNoClip;
         client.gameRenderer.setRenderHand(oldDoRenderHand);
-        
+
         ((IEParticleManager) client.particleEngine).ip_setWorld(oldWorld);
         client.hitResult = oldCrosshairTarget;
         ieGameRenderer.setCamera(oldCamera);
-        
+
         ((IEWorldRenderer) worldRenderer).portal_setTransparencyShader(oldTransparencyShader);
-        
+
         FogRendererContext.swappingManager.popSwapping();
-        
+
         ((IEWorldRenderer) oldWorldRenderer).portal_setChunkInfoList(oldChunkInfoList);
         VisibleSectionDiscovery.returnList(newChunkInfoList);
-        
+
         ((IEWorldRenderer) worldRenderer).ip_setRenderBuffers(oldRenderBuffers);
         ((IEMinecraftClient) client).ip_setRenderBuffers(oldClientRenderBuffers);
         if (newRenderBuffers != null) {
             returnRenderBuffersObject(newRenderBuffers);
         }
-        
+
         ((IEWorldRenderer) worldRenderer).portal_setFrustum(oldFrustum);
-        
+
         client.gameRenderer.resetProjectionMatrix(oldProjectionMatrix);
-        
+
         IrisInterface.invoker.setPipeline(worldRenderer, irisPipeline);
-        
+
         client.getEntityRenderDispatcher()
-            .prepare(
-                client.level,
-                oldCamera,
-                client.crosshairPickEntity
-            );
-        
+                .prepare(
+                        client.level,
+                        oldCamera,
+                        client.crosshairPickEntity
+                );
+
         CHelper.checkGlError();
-        
+
         client.smartCull = true;
     }
     

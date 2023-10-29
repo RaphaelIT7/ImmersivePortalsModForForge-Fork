@@ -27,23 +27,18 @@ public class IPRegistry {
     public static void registerMyDimensionsFabric() {
     }
 
-    public static final RegistryObject<Block> NETHER_PORTAL_BLOCK = RegistryObject.create(new ResourceLocation("immersive_portals", "nether_portal_block"), ForgeRegistries.BLOCKS);
-
-    @SubscribeEvent
-    public static void registerBlocks(RegisterEvent event) {
-        event.register(ForgeRegistries.Keys.BLOCKS, handler -> handler.register(
-                new ResourceLocation("immersive_portals" , "nether_portal_block"),
-                new PortalPlaceholderBlock(BlockBehaviour.Properties
-                        .of()
-                        .noCollission()
-                        .sound(SoundType.GLASS)
-                        .strength(1.0f, 0)
-                        .noOcclusion()
-                        .noLootTable()
-                        .lightLevel((s)->15)
-                )));
-    }
-
+    public static final DeferredRegister<Block> BLOCKS =
+            DeferredRegister.create(ForgeRegistries.BLOCKS, "immersive_portals");
+    public static final RegistryObject<Block> NETHER_PORTAL_BLOCK =
+            BLOCKS.register("nether_portal_block", () -> new PortalPlaceholderBlock(BlockBehaviour.Properties
+                    .of()
+                    .noCollission()
+                    .sound(SoundType.GLASS)
+                    .strength(1.0f, 0)
+                    .noOcclusion()
+                    .noLootTable()
+                    .lightLevel((s)->15)
+            ));
     public static final DeferredRegister<EntityType<?>> ENTITY_TYPES =
             DeferredRegister.create(ForgeRegistries.Keys.ENTITY_TYPES, "immersive_portals");
 
@@ -129,6 +124,10 @@ public class IPRegistry {
 
     public static void registerEntities(IEventBus bus) {
         ENTITY_TYPES.register(bus);
+    }
+
+    public static void registerBlocks(IEventBus bus) {
+        BLOCKS.register(bus);
     }
 
     public static void registerChunkGenerators() {

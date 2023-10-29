@@ -7,7 +7,7 @@ import qouteall.imm_ptl.peripheral.PeripheralModMain;
 public class PeripheralModEntryClient {
     public static void registerBlockRenderLayers() {
         ItemBlockRenderTypes.setRenderLayer(
-            PeripheralModEntry.PORTAL_HELPER_BLOCK.get(),
+            PeripheralModMain.PORTAL_HELPER_BLOCK.get(),
             RenderType.cutout()
         );
     }

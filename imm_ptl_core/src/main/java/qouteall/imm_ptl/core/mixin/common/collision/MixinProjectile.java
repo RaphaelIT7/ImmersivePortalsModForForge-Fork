@@ -42,7 +42,7 @@ public abstract class MixinProjectile extends MixinEntity {
 //        if (hitResult instanceof BlockHitResult) {
 //            Block hittingBlock = this_.level().getBlockState(((BlockHitResult) hitResult).getBlockPos()).getBlock();
 //            if (hitResult.getType() == HitResult.Type.BLOCK &&
-//                hittingBlock == PortalPlaceholderBlock.instance
+//                hittingBlock == IPRegistry.NETHER_PORTAL_BLOCK.get()
 //            ) {
 //                ci.cancel();
 //            }

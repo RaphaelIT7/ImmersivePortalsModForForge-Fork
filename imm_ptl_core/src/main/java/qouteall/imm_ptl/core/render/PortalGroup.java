@@ -219,7 +219,7 @@ public class PortalGroup implements PortalLike {
     public Vec3[] getOuterFrustumCullingVertices() {
         return null;
     }
-    
+
     @OnlyIn(Dist.CLIENT)
     @Override
     @Deprecated
@@ -261,7 +261,7 @@ public class PortalGroup implements PortalLike {
         
         return portals.stream().anyMatch(p -> p.cannotRenderInMe(portal));
     }
-    
+
     @OnlyIn(Dist.CLIENT)
     @Override
     public BoxPredicate getInnerFrustumCullingFunc(

@@ -8,6 +8,7 @@ import net.minecraft.world.phys.Vec3;
 import org.apache.commons.lang3.Validate;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
+import org.slf4j.LoggerFactory;
 import qouteall.imm_ptl.core.CHelper;
 import qouteall.imm_ptl.core.IPCGlobal;
 import qouteall.imm_ptl.core.IPGlobal;
@@ -249,7 +250,7 @@ public class IrisPortalRenderer extends PortalRenderer {
 
         // this is important
         client.getMainRenderTarget().bindWrite(true);
-
+        LoggerFactory.getLogger("immersive_portals").info("HI3");
         renderPortalContent(portal);
 
         int innerLayer = PortalRendering.getPortalLayer();

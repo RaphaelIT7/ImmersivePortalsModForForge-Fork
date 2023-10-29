@@ -13,7 +13,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 @Mixin(BlockGetter.class)
-public interface MixinBlockGetter {
+public class MixinBlockGetter {
 	
 	// avoid lagging due to long block traversal
 	@ModifyVariable(

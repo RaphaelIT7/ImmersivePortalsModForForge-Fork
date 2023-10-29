@@ -39,12 +39,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public abstract class PortalRenderer {
-    
-    /**
-     * An event for filtering whether a portal should render.
-     * All listeners' results are ANDed.
-     */
-    
+
     public static record PortalGroupToRender(
         PortalGroup group,
         List<Portal> portals

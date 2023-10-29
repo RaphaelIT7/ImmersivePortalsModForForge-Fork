@@ -14,9 +14,9 @@ import qouteall.imm_ptl.core.portal.custom_portal_gen.CustomPortalGenManagement;
 
 @Mixin(ServerPlayer.class)
 public class MixinServerPlayerEntity_MA {
-    @Inject(method = "changeDimension", at = @At("HEAD"))
+    @Inject(method = "changeDimension", at = @At("HEAD"), remap = false)
     private void onChangeDimensionByVanilla(
-            ServerLevel p_9180_, ITeleporter teleporter, CallbackInfoReturnable<Entity> cir
+            ServerLevel pServer, ITeleporter teleporter, CallbackInfoReturnable<Entity> cir
     ) {
         ServerPlayer this_ = (ServerPlayer) (Object) this;
         onBeforeDimensionTravel(this_);

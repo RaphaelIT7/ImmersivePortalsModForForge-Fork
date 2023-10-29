@@ -7,6 +7,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.Vec3;
 import org.lwjgl.opengl.GL11;
+import org.slf4j.LoggerFactory;
 import qouteall.imm_ptl.core.CHelper;
 import qouteall.imm_ptl.core.compat.IPPortingLibCompat;
 import qouteall.imm_ptl.core.ducks.IEMinecraftClient;
@@ -77,7 +78,7 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
             Minecraft.ON_OSX
         );
         GL11.glDisable(GL11.GL_STENCIL_TEST);
-        
+        LoggerFactory.getLogger("immersive_portals").info("HI5");
         renderPortalContent(portal);
         
         ((IEMinecraftClient) client).setFrameBuffer(oldFrameBuffer);

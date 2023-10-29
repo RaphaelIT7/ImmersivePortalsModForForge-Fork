@@ -44,6 +44,7 @@ public class IPModEntry {
 
         IPModMain.init();
 
+        IPRegistry.registerBlocks(FMLJavaModLoadingContext.get().getModEventBus());
         IPRegistry.registerEntities(FMLJavaModLoadingContext.get().getModEventBus());
 
         IPRegistry.registerMyDimensionsFabric();

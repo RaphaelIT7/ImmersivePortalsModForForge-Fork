@@ -19,6 +19,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.apache.commons.lang3.Validate;
 import org.jetbrains.annotations.Nullable;
 import qouteall.imm_ptl.core.ClientWorldLoader;
+import qouteall.imm_ptl.core.platform_specific.IPRegistry;
 import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.imm_ptl.core.portal.PortalPlaceholderBlock;
 import qouteall.imm_ptl.core.portal.PortalUtils;
@@ -92,7 +93,7 @@ public class BlockManipulationClient {
 
         if (client.hitResult instanceof BlockHitResult) {
             BlockPos hitPos = ((BlockHitResult) client.hitResult).getBlockPos();
-            if (client.level.getBlockState(hitPos).getBlock() == PortalPlaceholderBlock.instance) {
+            if (client.level.getBlockState(hitPos).getBlock() == IPRegistry.NETHER_PORTAL_BLOCK.get()) {
                 return 23333;
             }
         }
@@ -132,7 +133,7 @@ public class BlockManipulationClient {
                 (rayTraceContext, blockPos) -> {
                     BlockState blockState = world.getBlockState(blockPos);
 
-                    if (blockState.getBlock() == PortalPlaceholderBlock.instance) {
+                    if (blockState.getBlock() == IPRegistry.NETHER_PORTAL_BLOCK.get()) {
                         return null;
                     }
                     if (blockState.getBlock() == Blocks.BARRIER) {

@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import qouteall.imm_ptl.core.portal.PortalUtils;
 
 @Mixin(Container.class)
-public interface MixinContainer {
+public class MixinContainer {
     @Inject(
         method = "stillValidBlockEntity(Lnet/minecraft/world/level/block/entity/BlockEntity;Lnet/minecraft/world/entity/player/Player;I)Z",
         at = @At("RETURN"),

@@ -146,7 +146,7 @@ public class CommandStickItem extends Item {
             registryRegistryKey, Lifecycle.stable()
     );
 
-    public static void registerType(String id, Data data) {
+    /*public static void registerType(String id, Data data) {
         commandStickTypeRegistry.register(
                 ResourceKey.create(
                         registryRegistryKey, new ResourceLocation(id)
@@ -154,7 +154,7 @@ public class CommandStickItem extends Item {
                 data,
                 Lifecycle.stable()
         );
-    }
+    }*/
 
     public static Data createData(String name) {
         return createData(name, name);
@@ -249,7 +249,7 @@ public class CommandStickItem extends Item {
 
     public static void init() {
         PortalCommand.createCommandStickCommandSignal.connect((player, command) -> {
-            ItemStack itemStack = new ItemStack(PeripheralModEntry.COMMAND_STICK_ITEM.get(), 1);
+            ItemStack itemStack = new ItemStack(PeripheralModMain.COMMAND_STICK_ITEM.get(), 1);
             Data data = new Data(
                     command,
                     command, new ArrayList<>(), false
@@ -266,7 +266,7 @@ public class CommandStickItem extends Item {
         // Add to ingredients tab
         if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
             commandStickTypeRegistry.stream().forEach(data -> {
-                ItemStack stack = new ItemStack(PeripheralModEntry.COMMAND_STICK_ITEM.get());
+                ItemStack stack = new ItemStack(PeripheralModMain.COMMAND_STICK_ITEM.get());
                 data.serialize(stack.getOrCreateTag());
                 event.accept(stack);
             });
