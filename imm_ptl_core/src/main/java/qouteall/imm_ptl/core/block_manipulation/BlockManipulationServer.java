@@ -8,7 +8,6 @@ import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Tuple;
@@ -16,7 +15,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import org.apache.commons.lang3.Validate;
@@ -28,7 +26,6 @@ import qouteall.imm_ptl.core.miscellaneous.IPVanillaCopy;
 import qouteall.imm_ptl.core.network.PacketRedirection;
 import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.imm_ptl.core.portal.global_portals.GlobalPortalStorage;
-import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.MiscHelper;
 
 import java.util.List;
@@ -111,11 +108,8 @@ public class BlockManipulationServer {
         public static void processPlayerActionPacket(
                 ServerPlayer player,
                 ResourceKey<Level> dimension,
-                byte[] packetBytes
+                ServerboundPlayerActionPacket packet
         ) {
-            FriendlyByteBuf buf = IPMcHelper.bytesToBuf(packetBytes);
-            ServerboundPlayerActionPacket packet = new ServerboundPlayerActionPacket(buf);
-
             ServerLevel world = MiscHelper.getServer().getLevel(dimension);
             Validate.notNull(world);
 
@@ -130,11 +124,8 @@ public class BlockManipulationServer {
         public static void processUseItemOnPacket(
                 ServerPlayer player,
                 ResourceKey<Level> dimension,
-                byte[] packetBytes
+                ServerboundUseItemOnPacket packet
         ) {
-            FriendlyByteBuf buf = IPMcHelper.bytesToBuf(packetBytes);
-            ServerboundUseItemOnPacket packet = new ServerboundUseItemOnPacket(buf);
-
             ServerLevel world = MiscHelper.getServer().getLevel(dimension);
             Validate.notNull(world);
 

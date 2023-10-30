@@ -15,8 +15,7 @@ import java.util.List;
 @Mixin(ChunkStatus.class)
 public class MixinChunkStatus {
     @Inject(
-        method = "lambda$static$16", at = @At("HEAD"),
-        remap = false
+        method = "lambda$static$16", at = @At("HEAD")
     )
     private static void redirectPopulateEntities(
         ChunkStatus var1, ServerLevel world, ChunkGenerator var3, List<ChunkAccess> var4, ChunkAccess chunk,

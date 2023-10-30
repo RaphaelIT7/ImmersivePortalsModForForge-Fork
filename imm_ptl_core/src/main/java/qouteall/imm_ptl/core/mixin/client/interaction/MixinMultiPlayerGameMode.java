@@ -36,103 +36,103 @@ public abstract class MixinMultiPlayerGameMode implements IEClientPlayerInteract
     private Minecraft minecraft;
     
     // the player level field is not being switched now
-    @Redirect(
-        method = "lambda$startDestroyBlock$1", // lambda in startDestroyBlock
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/player/LocalPlayer;level()Lnet/minecraft/world/level/Level;"
-        )
-    )
-    private Level redirectPlayerLevel1(LocalPlayer instance) {
-        return Minecraft.getInstance().level;
-    }
-    
-    // the player level field is not being switched now
-    @Redirect(
-        method = "continueDestroyBlock",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/player/LocalPlayer;level()Lnet/minecraft/world/level/Level;"
-        )
-    )
-    private Level redirectPlayerLevel2(LocalPlayer instance) {
-        return Minecraft.getInstance().level;
-    }
-    
-    // use another constructor that does not use player level
-    @Redirect(
-        method = "performUseItemOn",
-        at = @At(
-            value = "NEW",
-            target = "(Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/InteractionHand;Lnet/minecraft/world/phys/BlockHitResult;)Lnet/minecraft/world/item/context/UseOnContext;"
-        )
-    )
-    private UseOnContext redirectNewUseOnContext(Player player, InteractionHand interactionHand, BlockHitResult blockHitResult) {
-        return new UseOnContext(
-            Minecraft.getInstance().level,
-            player,
-            interactionHand,
-            player.getItemInHand(interactionHand),
-            blockHitResult
-        );
-    }
-    
-    @ModifyArg(
-        method = "startPrediction",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/multiplayer/ClientPacketListener;send(Lnet/minecraft/network/protocol/Packet;)V"
-        )
-    )
-    private Packet<?> modifyPacketInStartPrediction(Packet<?> packet) {
-        return ip_redirectPacket(packet);
-    }
-    
-    @ModifyArg(
-        method = "startDestroyBlock",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/multiplayer/ClientPacketListener;send(Lnet/minecraft/network/protocol/Packet;)V"
-        )
-    )
-    private Packet redirectSendInStartDestroyBlock(Packet packet) {
-        return ip_redirectPacket(packet);
-    }
-    
-    @ModifyArg(
-        method = "stopDestroyBlock",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/multiplayer/ClientPacketListener;send(Lnet/minecraft/network/protocol/Packet;)V"
-        )
-    )
-    private Packet redirectSendInStopDestroyBlock(Packet packet) {
-        return ip_redirectPacket(packet);
-    }
-    
-    private static Packet<?> ip_redirectPacket(Packet<?> packet) {
-        if (ClientWorldLoader.getIsWorldSwitched()) {
-            ResourceKey<Level> dimension = Minecraft.getInstance().level.dimension();
-            if (packet instanceof ServerboundPlayerActionPacket playerActionPacket) {
-                if (BlockManipulationServer.isAttackingAction(playerActionPacket.getAction())) {
-                    return McRemoteProcedureCall.createPacketToSendToServer(
-                        "qouteall.imm_ptl.core.block_manipulation.BlockManipulationServer.RemoteCallables.processPlayerActionPacket",
-                        dimension,
-                        IPMcHelper.packetToBytes(playerActionPacket)
-                    );
-                }
-            }
-            else if (packet instanceof ServerboundUseItemOnPacket useItemOnPacket) {
-                return McRemoteProcedureCall.createPacketToSendToServer(
-                    "qouteall.imm_ptl.core.block_manipulation.BlockManipulationServer.RemoteCallables.processUseItemOnPacket",
-                    dimension,
-                    IPMcHelper.packetToBytes(useItemOnPacket)
-                );
-            }
-            // no need to redirect ServerboundUseItemPacket
-        }
-        
-        return packet;
-    }
-    
+//    @Redirect(
+//        method = "lambda$startDestroyBlock$1", // lambda in startDestroyBlock
+//        at = @At(
+//            value = "INVOKE",
+//            target = "Lnet/minecraft/client/player/LocalPlayer;level()Lnet/minecraft/world/level/Level;"
+//        )
+//    )
+//    private Level redirectPlayerLevel1(LocalPlayer instance) {
+//        return Minecraft.getInstance().level;
+//    }
+//
+//    // the player level field is not being switched now
+//    @Redirect(
+//        method = "continueDestroyBlock",
+//        at = @At(
+//            value = "INVOKE",
+//            target = "Lnet/minecraft/client/player/LocalPlayer;level()Lnet/minecraft/world/level/Level;"
+//        )
+//    )
+//    private Level redirectPlayerLevel2(LocalPlayer instance) {
+//        return Minecraft.getInstance().level;
+//    }
+//
+//    // use another constructor that does not use player level
+//    @Redirect(
+//        method = "performUseItemOn",
+//        at = @At(
+//            value = "NEW",
+//            target = "(Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/InteractionHand;Lnet/minecraft/world/phys/BlockHitResult;)Lnet/minecraft/world/item/context/UseOnContext;"
+//        )
+//    )
+//    private UseOnContext redirectNewUseOnContext(Player player, InteractionHand interactionHand, BlockHitResult blockHitResult) {
+//        return new UseOnContext(
+//            Minecraft.getInstance().level,
+//            player,
+//            interactionHand,
+//            player.getItemInHand(interactionHand),
+//            blockHitResult
+//        );
+//    }
+//
+//    @ModifyArg(
+//        method = "startPrediction",
+//        at = @At(
+//            value = "INVOKE",
+//            target = "Lnet/minecraft/client/multiplayer/ClientPacketListener;send(Lnet/minecraft/network/protocol/Packet;)V"
+//        )
+//    )
+//    private Packet<?> modifyPacketInStartPrediction(Packet<?> packet) {
+//        return ip_redirectPacket(packet);
+//    }
+//
+//    @ModifyArg(
+//        method = "startDestroyBlock",
+//        at = @At(
+//            value = "INVOKE",
+//            target = "Lnet/minecraft/client/multiplayer/ClientPacketListener;send(Lnet/minecraft/network/protocol/Packet;)V"
+//        )
+//    )
+//    private Packet redirectSendInStartDestroyBlock(Packet packet) {
+//        return ip_redirectPacket(packet);
+//    }
+//
+//    @ModifyArg(
+//        method = "stopDestroyBlock",
+//        at = @At(
+//            value = "INVOKE",
+//            target = "Lnet/minecraft/client/multiplayer/ClientPacketListener;send(Lnet/minecraft/network/protocol/Packet;)V"
+//        )
+//    )
+//    private Packet redirectSendInStopDestroyBlock(Packet packet) {
+//        return ip_redirectPacket(packet);
+//    }
+//
+//    private static Packet<?> ip_redirectPacket(Packet<?> packet) {
+//        if (ClientWorldLoader.getIsWorldSwitched()) {
+//            ResourceKey<Level> dimension = Minecraft.getInstance().level.dimension();
+//            if (packet instanceof ServerboundPlayerActionPacket playerActionPacket) {
+//                if (BlockManipulationServer.isAttackingAction(playerActionPacket.getAction())) {
+//                    return McRemoteProcedureCall.createPacketToSendToServer(
+//                        "qouteall.imm_ptl.core.block_manipulation.BlockManipulationServer.RemoteCallables.processPlayerActionPacket",
+//                        dimension,
+//                        IPMcHelper.packetToBytes(playerActionPacket)
+//                    );
+//                }
+//            }
+//            else if (packet instanceof ServerboundUseItemOnPacket useItemOnPacket) {
+//                return McRemoteProcedureCall.createPacketToSendToServer(
+//                    "qouteall.imm_ptl.core.block_manipulation.BlockManipulationServer.RemoteCallables.processUseItemOnPacket",
+//                    dimension,
+//                    IPMcHelper.packetToBytes(useItemOnPacket)
+//                );
+//            }
+//            // no need to redirect ServerboundUseItemPacket
+//        }
+//
+//        return packet;
+//    }
+//
 }

@@ -19,7 +19,7 @@ public abstract class MixinSodiumShaderLoader {
             at = @At(
                     value = "INVOKE",
                     target = "Lme/jellysquid/mods/sodium/client/gl/shader/ShaderLoader;getShaderSource(Lnet/minecraft/resources/ResourceLocation;)Ljava/lang/String;",
-                    remap = true
+                    remap = false
             ),
             remap = false
     )

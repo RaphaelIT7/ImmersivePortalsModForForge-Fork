@@ -129,14 +129,14 @@ public class ImplRemoteProcedureCall {
             false, e -> {throw new RuntimeException(e.toString());}
         );
     }
-    
+
     private static Object deserializeArgument(FriendlyByteBuf buf, Type type) {
         Function<FriendlyByteBuf, Object> deserializer = deserializerMap.get(type);
         if (deserializer == null) {
             String json = buf.readUtf();
             return gson.fromJson(json, type);
         }
-        
+
         return deserializer.apply(buf);
     }
     

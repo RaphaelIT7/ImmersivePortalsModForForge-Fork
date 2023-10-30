@@ -36,7 +36,7 @@ public class PlayerAction {
     public boolean handle(Supplier<NetworkEvent.Context> supplier) {
         NetworkEvent.Context ctx = supplier.get();
         ctx.enqueueWork(() -> IPGlobal.serverTaskList.addTask(() -> {
-            //BlockManipulationServer.processBreakBlock(dimension, packet, ctx.getSender());
+            BlockManipulationServer.RemoteCallables.processPlayerActionPacket(ctx.getSender(), dimension, packet);
             return true;
         }));
         ctx.setPacketHandled(true);
