@@ -102,26 +102,17 @@ public class MixinPlayerList {
         ResourceKey<Level> dimension, Packet<?> packet
     ) {
         ChunkPos chunkPos = new ChunkPos(BlockPos.containing(new Vec3(x, y, z)));
-        
-        var recs =
-            NewChunkTrackingGraph.getPlayerWatchListRecord(dimension, chunkPos.x, chunkPos.z);
-        
-        if (recs == null) {
-            return;
-        }
-        
-        for (NewChunkTrackingGraph.PlayerWatchRecord rec : recs.values()) {
-            if (rec.isLoadedToPlayer && rec.player != excludingPlayer) {
-                if (NewChunkTrackingGraph.isPlayerWatchingChunkWithinRadius(
-                    rec.player, dimension, chunkPos.x, chunkPos.z, (int) distance + 16
-                )) {
-                    rec.player.connection.send(
-                        PacketRedirection.createRedirectedMessage(
-                            dimension, (Packet<ClientGamePacketListener>) packet
-                        )
-                    );
-                }
+
+        NewChunkTrackingGraph.getPlayersViewingChunk(
+                dimension, chunkPos.x, chunkPos.z
+        ).filter(playerEntity -> NewChunkTrackingGraph.isPlayerWatchingChunkWithinRaidus(
+                playerEntity, dimension, chunkPos.x, chunkPos.z, (int) distance + 16
+        )).forEach(playerEntity -> {
+            if (playerEntity != excludingPlayer) {
+                PacketRedirection.sendRedirectedMessage(
+                        playerEntity, dimension, packet
+                );
             }
-        }
+        });
     }
 }

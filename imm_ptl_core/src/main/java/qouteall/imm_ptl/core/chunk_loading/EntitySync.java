@@ -28,33 +28,33 @@ import java.util.List;
  * */
 public class EntitySync {
     private static final LimitedLogger limitedLogger = new LimitedLogger(100);
-
+    
     public static void init() {
         IPGlobal.postServerTickSignal.connect(EntitySync::tick);
         DynamicDimensionsImpl.beforeRemovingDimensionSignal.connect(EntitySync::forceRemoveDimension);
     }
-
+    
     /**
      * Replace ThreadedAnvilChunkStorage#tickEntityMovement()
      * regarding to the players in all dimensions
      */
     private static void tick() {
         MinecraftServer server = MiscHelper.getServer();
-
+        
         server.getProfiler().push("ip_entity_tracking");
-
+        
         List<ServerPlayer> playerList = McHelper.getRawPlayerList();
-
+        
         List<ServerPlayer> dirtyPlayers = new ArrayList<>();
-
+        
         for (ServerPlayer player : playerList) {
             ChunkMap storage =
-                    ((ServerLevel) player.level()).getChunkSource().chunkMap;
+                ((ServerLevel) player.level()).getChunkSource().chunkMap;
             Int2ObjectMap<ChunkMap.TrackedEntity> entityTrackerMap =
-                    ((IEThreadedAnvilChunkStorage) storage).ip_getEntityTrackerMap();
-
+                ((IEThreadedAnvilChunkStorage) storage).ip_getEntityTrackerMap();
+            
             ChunkMap.TrackedEntity playerItselfTracker =
-                    entityTrackerMap.get(player.getId());
+                entityTrackerMap.get(player.getId());
             if (playerItselfTracker != null) {
                 if (isDirty(playerItselfTracker)) {
                     dirtyPlayers.add(player);
@@ -66,45 +66,45 @@ public class EntitySync {
 //                );
             }
         }
-
+        
         server.getAllLevels().forEach(world -> {
             ChunkMap storage = world.getChunkSource().chunkMap;
             Int2ObjectMap<ChunkMap.TrackedEntity> entityTrackerMap =
-                    ((IEThreadedAnvilChunkStorage) storage).ip_getEntityTrackerMap();
-
+                ((IEThreadedAnvilChunkStorage) storage).ip_getEntityTrackerMap();
+            
             PacketRedirection.withForceRedirect(world, () -> {
                 for (ChunkMap.TrackedEntity tracker : entityTrackerMap.values()) {
                     ((IEEntityTracker) tracker).tickEntry();
-
+                    
                     boolean dirty = isDirty(tracker);
                     List<ServerPlayer> updatedPlayerList = dirty ? playerList : dirtyPlayers;
-
+                    
                     for (ServerPlayer player : updatedPlayerList) {
                         ((IEEntityTracker) tracker).updateEntityTrackingStatus(player);
                     }
-
+                    
                     if (dirty) {
                         markUnDirty(tracker);
                     }
                 }
             });
         });
-
+        
         server.getProfiler().pop();
     }
-
+    
     private static boolean isDirty(ChunkMap.TrackedEntity tracker) {
         SectionPos newPos = SectionPos.of(((IEEntityTracker) tracker).getEntity_());
         return !((IEEntityTracker) tracker).getLastCameraPosition().equals(newPos);
     }
-
+    
     private static void markUnDirty(ChunkMap.TrackedEntity tracker) {
         SectionPos currPos = SectionPos.of(((IEEntityTracker) tracker).getEntity_());
         ((IEEntityTracker) tracker).setLastCameraPosition(currPos);
     }
-
+    
     private static void forceRemoveDimension(ResourceKey<Level> dimension) {
-
+    
     }
-
+    
 }

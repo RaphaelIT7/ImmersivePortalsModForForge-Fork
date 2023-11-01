@@ -66,7 +66,7 @@ public class IPModMain {
 
         ServerPerformanceMonitor.init();
 
-        ImmPtlChunkTickets.init();
+        //ImmPtlChunkTickets.init();
 
         IPPortingLibCompat.init();
 

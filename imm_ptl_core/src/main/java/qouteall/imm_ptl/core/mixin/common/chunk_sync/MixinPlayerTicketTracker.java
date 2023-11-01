@@ -20,7 +20,7 @@ public class MixinPlayerTicketTracker {
     )
     private void onInject(CallbackInfo ci) {
         if (IPConfig.getConfig().enableImmPtlChunkLoading) {
-            ci.cancel();
+//            ci.cancel();
         }
     }
 }

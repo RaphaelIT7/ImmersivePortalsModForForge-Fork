@@ -1,6 +1,7 @@
 package qouteall.imm_ptl.core.mixin.client.sync;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.thread.ReentrantBlockableEventLoop;
 import net.minecraft.world.level.Level;
@@ -11,6 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import qouteall.imm_ptl.core.ClientWorldLoader;
 import qouteall.imm_ptl.core.miscellaneous.IPVanillaCopy;
 import qouteall.imm_ptl.core.network.PacketRedirectionClient;
+import qouteall.q_misc_util.Helper;
 
 @Mixin(Minecraft.class)
 public abstract class MixinMinecraft_RedirectedPacket extends ReentrantBlockableEventLoop<Runnable> {
@@ -31,7 +33,17 @@ public abstract class MixinMinecraft_RedirectedPacket extends ReentrantBlockable
         ResourceKey<Level> redirectedDimension = PacketRedirectionClient.clientTaskRedirection.get();
         if (redirectedDimension != null) {
             Runnable newRunnable = () -> {
-                ClientWorldLoader.withSwitchedWorldFailSoft(redirectedDimension, runnable);
+                ClientLevel world = ClientWorldLoader.getOptionalWorld(redirectedDimension);
+
+                if (world == null) {
+                    Helper.err(
+                            "Ignoring redirected task of invalid dimension %s"
+                                    .formatted(redirectedDimension.location())
+                    );
+                    return;
+                }
+
+                ClientWorldLoader.withSwitchedWorld(world, runnable);
             };
             cir.setReturnValue(newRunnable);
         }

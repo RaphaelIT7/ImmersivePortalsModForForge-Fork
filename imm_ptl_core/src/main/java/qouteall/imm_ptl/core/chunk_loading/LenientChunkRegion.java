@@ -13,32 +13,32 @@ import java.util.List;
 
 // Lenient means getBlockState does not crash if out of bound
 public class LenientChunkRegion extends WorldGenRegion {
-
+    
     public LenientChunkRegion(ServerLevel world, List<ChunkAccess> chunks) {
         super(world, chunks, null, 99999);
     }
-
+    
     static LenientChunkRegion createLenientChunkRegion(
-            DimensionalChunkPos center, int radius, ServerLevel world
+        DimensionalChunkPos center, int radius, ServerLevel world
     ) {
         List<ChunkAccess> chunks = new ArrayList<>();
-
+    
         for (int z = center.z - radius; z <= center.z + radius; z++) {
             for (int x = center.x - radius; x <= center.x + radius; x++) {
                 chunks.add(world.getChunk(x, z));
             }
         }
-
+    
         return new LenientChunkRegion(
-                world, chunks
+            world, chunks
         );
     }
-
+    
     @Override
     public BlockState getBlockState(BlockPos pos) {
         final ChunkAccess chunk = this.getChunk(
-                pos.getX() >> 4, pos.getZ() >> 4,
-                ChunkStatus.FULL, false
+            pos.getX() >> 4, pos.getZ() >> 4,
+            ChunkStatus.FULL, false
         );
         if (chunk == null) {
             return Blocks.AIR.defaultBlockState();

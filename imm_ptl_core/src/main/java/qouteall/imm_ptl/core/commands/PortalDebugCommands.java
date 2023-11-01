@@ -236,8 +236,8 @@ public class PortalDebugCommands {
             .requires(serverCommandSource -> serverCommandSource.hasPermission(3))
             .executes(context -> {
                 ServerPlayer player = context.getSource().getPlayerOrException();
-                ChunkVisibility.foreachBaseChunkLoaders(
-                    player,
+                ChunkVisibility.getBaseChunkLoaders(
+                    player).forEach(
                     loader -> McHelper.serverLog(
                         player, loader.toString()
                     )

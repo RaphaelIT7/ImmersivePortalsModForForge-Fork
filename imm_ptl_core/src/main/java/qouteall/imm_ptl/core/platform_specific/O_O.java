@@ -20,13 +20,11 @@ import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.fml.loading.FMLPaths;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
-import qouteall.imm_ptl.core.chunk_loading.ImmPtlClientChunkMap;
+import qouteall.imm_ptl.core.chunk_loading.MyClientChunkManager;
 import qouteall.imm_ptl.core.portal.custom_portal_gen.PortalGenInfo;
-import qouteall.q_misc_util.Helper;
 
 import javax.annotation.Nullable;
 import java.nio.file.Path;
-import java.util.Optional;
 
 public class O_O {
     public static boolean isDimensionalThreadingPresent = false;
@@ -117,7 +115,7 @@ public class O_O {
 
     @OnlyIn(Dist.CLIENT)
     public static ClientChunkCache createMyClientChunkManager(ClientLevel world, int loadDistance) {
-        return new ImmPtlClientChunkMap(world, loadDistance);
+        return new MyClientChunkManager(world, loadDistance);
     }
 
     public static boolean getIsPehkuiPresent() {

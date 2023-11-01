@@ -52,21 +52,9 @@ public class PacketRedirectionClient {
     ) {
         ResourceKey<Level> oldTaskRedirection = clientTaskRedirection.get();
         clientTaskRedirection.set(dimension);
-        
+
         try {
-            if (Minecraft.getInstance().isSameThread()) {
-                // typically for the invocation inside bundle packet handling
-                ClientWorldLoader.withSwitchedWorldFailSoft(
-                    dimension,
-                    () -> {
-                        packet.handle(handler);
-                    }
-                );
-            }
-            else {
-                // normal packet handling
-                packet.handle(handler);
-            }
+            packet.handle(handler);
         }
         finally {
             clientTaskRedirection.set(oldTaskRedirection);
