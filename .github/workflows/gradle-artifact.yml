@@ -31,4 +31,4 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        path: 'build/to_upload/*'
+        path: 'build/libs/*'
