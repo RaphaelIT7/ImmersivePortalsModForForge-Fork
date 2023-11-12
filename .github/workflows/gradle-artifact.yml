@@ -26,7 +26,7 @@ jobs:
         MODRINTH: ${{ secrets.MODRINTH }}
       with:
         gradle-version: 7.3
-        arguments: build additionalCopy modrinth
+        arguments: build modrinth
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
