@@ -10,6 +10,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.datafixers.util.Pair;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.commands.CommandSourceStack;
@@ -88,7 +89,7 @@ public class PortalCommand {
 
         LiteralArgumentBuilder<CommandSourceStack> global =
             Commands.literal("global")
-                .requires(commandSource -> commandSource.hasPermission(2));
+                .requires(PortalCommand::canUsePortalCommand);
         registerGlobalPortalCommands(global);
         builder.then(global);
 
@@ -1633,7 +1634,7 @@ public class PortalCommand {
 
                             Vec3 center = fromPos.add(toPos).scale(0.5);
 
-                            Portal portal = Portal.entityType.create(context.getSource().getLevel());
+                            Portal portal = IPRegistry.PORTAL.get().create(context.getSource().getLevel());
                             assert portal != null;
                             portal.setOriginPos(center);
                             portal.setOrientation(vecAlongAxis.normalize(), vecNotAlongAxis.normalize());
@@ -1649,7 +1650,7 @@ public class PortalCommand {
 
                             McHelper.spawnServerEntity(portal);
 
-                            Portal flippedPortal = PortalManipulation.createFlippedPortal(portal, Portal.entityType);
+                            Portal flippedPortal = PortalManipulation.createFlippedPortal(portal, IPRegistry.PORTAL.get());
                             McHelper.spawnServerEntity(flippedPortal);
 
                             return 0;
@@ -2150,7 +2151,7 @@ public class PortalCommand {
         portal.setDestination(dest);
         McHelper.spawnServerEntity(portal);
 
-        context.getSource().sendSuccess(()->getMakePortalSuccess(portal), true);
+        context.getSource().sendSuccess(()->getMakePortalSuccess(portal), false);
 
         return 1;
     }
@@ -2174,7 +2175,7 @@ public class PortalCommand {
 
         McHelper.spawnServerEntity(portal);
 
-        context.getSource().sendSuccess(()->getMakePortalSuccess(portal), true);
+        context.getSource().sendSuccess(()->getMakePortalSuccess(portal), false);
 
         return 1;
     }
@@ -2316,7 +2317,7 @@ public class PortalCommand {
 
     private static void registerEulerCommands(LiteralArgumentBuilder<CommandSourceStack> builder) {
         builder.then(Commands.literal("make_portal")
-            .requires(s -> s.hasPermission(2))
+            .requires(PortalCommand::canUsePortalCommand)
             .then(Commands.argument("origin", Vec3Argument.vec3(false))
                 .then(Commands.argument("rotation", RotationArgument.rotation())
                     .then(Commands.argument("width", DoubleArgumentType.doubleArg(0))
@@ -2335,7 +2336,7 @@ public class PortalCommand {
 
                                         ServerLevel world = context.getSource().getLevel();
 
-                                        Portal portal = Portal.entityType.create(world);
+                                        Portal portal = IPRegistry.PORTAL.get().create(world);
                                         Validate.notNull(portal);
                                         portal.setOriginPos(origin);
 
@@ -2386,7 +2387,7 @@ public class PortalCommand {
         );
 
         builder.then(Commands.literal("set_this_side")
-            .requires(s -> s.hasPermission(2))
+            .requires(PortalCommand::canUsePortalCommand)
             .then(Commands.argument("origin", Vec3Argument.vec3(false))
                 .then(Commands.argument("rotation", RotationArgument.rotation())
                     .then(Commands.argument("width", DoubleArgumentType.doubleArg(0))
@@ -2509,7 +2510,7 @@ public class PortalCommand {
         McHelper.spawnServerEntity(otherSideMirror);
 
         // create the invisible portal
-        Portal invisiblePortal = Portal.entityType.create(fromWorld);
+        Portal invisiblePortal = IPRegistry.PORTAL.get().create(fromWorld);
         assert invisiblePortal != null;
         invisiblePortal.dimensionTo = toWorld.dimension();
         invisiblePortal.setPortalState(UnilateralPortalState.combine(thisSideState, otherSideState));
@@ -2518,7 +2519,7 @@ public class PortalCommand {
         invisiblePortal.setOriginPos(invisiblePortal.getOriginPos().add(portal.getNormal().scale(0.001)));
         invisiblePortal.setDestination(invisiblePortal.getDestPos().add(portal.getContentDirection().scale(0.001)));
 
-        Portal reverseInvisiblePortal = PortalManipulation.createReversePortal(invisiblePortal, Portal.entityType);
+        Portal reverseInvisiblePortal = PortalManipulation.createReversePortal(invisiblePortal, IPRegistry.PORTAL.get());
 
         McHelper.spawnServerEntity(invisiblePortal);
         McHelper.spawnServerEntity(reverseInvisiblePortal);

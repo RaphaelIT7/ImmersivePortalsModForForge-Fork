@@ -24,7 +24,7 @@ public class IPConfig implements ConfigData {
     @ConfigEntry.BoundedDiscrete(min = 0, max = 10)
     public int maxPortalLayer = 5;
     @ConfigEntry.Category("client")
-    public boolean lagAttackProof = true;
+    public boolean lagAttackProof = false;
     @ConfigEntry.Category("client")
     public boolean compatibilityRenderMode = false;
     @ConfigEntry.Category("client")
@@ -74,9 +74,9 @@ public class IPConfig implements ConfigData {
     // common visible configs
     
     @ConfigEntry.Gui.EnumHandler(option = ConfigEntry.Gui.EnumHandler.EnumDisplayOption.BUTTON)
-    public IPGlobal.NetherPortalMode netherPortalMode = IPGlobal.NetherPortalMode.normal;
+    public IPGlobal.NetherPortalMode netherPortalMode = IPGlobal.NetherPortalMode.vanilla;
     @ConfigEntry.Gui.EnumHandler(option = ConfigEntry.Gui.EnumHandler.EnumDisplayOption.BUTTON)
-    public IPGlobal.EndPortalMode endPortalMode = IPGlobal.EndPortalMode.normal;
+    public IPGlobal.EndPortalMode endPortalMode = IPGlobal.EndPortalMode.vanilla;
     public boolean enableWarning = true;
     public boolean lightVanillaNetherPortalWhenCrouching = true;
     public boolean enableAlternateDimensions = true;
@@ -95,7 +95,7 @@ public class IPConfig implements ConfigData {
     // common invisible configs
     
     @ConfigEntry.Gui.Excluded
-    public int portalSearchingRange = 128;
+    public int portalSearchingRange = 64;
     @ConfigEntry.Gui.Excluded
     public boolean serverSideNormalChunkLoading = true;
     @ConfigEntry.Gui.Excluded

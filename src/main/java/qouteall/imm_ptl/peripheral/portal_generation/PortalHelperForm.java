@@ -17,6 +17,7 @@ import qouteall.imm_ptl.core.portal.custom_portal_gen.form.AbstractDiligentForm;
 import qouteall.imm_ptl.core.portal.custom_portal_gen.form.PortalGenForm;
 import qouteall.imm_ptl.core.portal.nether_portal.BlockPortalShape;
 import qouteall.imm_ptl.peripheral.PeripheralModMain;
+import qouteall.imm_ptl.core.platform_specific.IPRegistry;
 
 import java.util.function.Predicate;
 
@@ -55,11 +56,11 @@ public class PortalHelperForm extends AbstractDiligentForm {
         world.setBlockAndUpdate(info.fromShape.firstFramePos, Blocks.AIR.defaultBlockState());
         world.setBlockAndUpdate(info.toShape.firstFramePos, Blocks.AIR.defaultBlockState());
         
-        Portal portal = info.createTemplatePortal(Portal.entityType);
+        Portal portal = info.createTemplatePortal(IPRegistry.PORTAL.get());
         PortalExtension.get(portal).bindCluster = true;
-        Portal flipped = PortalManipulation.createFlippedPortal(portal, Portal.entityType);
-        Portal reverse = PortalManipulation.createReversePortal(portal, Portal.entityType);
-        Portal parallel = PortalManipulation.createReversePortal(flipped, Portal.entityType);
+        Portal flipped = PortalManipulation.createFlippedPortal(portal, IPRegistry.PORTAL.get());
+        Portal reverse = PortalManipulation.createReversePortal(portal, IPRegistry.PORTAL.get());
+        Portal parallel = PortalManipulation.createReversePortal(flipped, IPRegistry.PORTAL.get());
         
         Portal[] portals = {portal, flipped, reverse, parallel};
         

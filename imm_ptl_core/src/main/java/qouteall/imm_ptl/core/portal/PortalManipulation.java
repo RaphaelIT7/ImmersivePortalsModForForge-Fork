@@ -21,6 +21,8 @@ import qouteall.imm_ptl.core.commands.PortalCommand;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.MiscHelper;
 import qouteall.q_misc_util.my_util.DQuaternion;
+import qouteall.imm_ptl.core.platform_specific.IPRegistry;
+import qouteall.imm_ptl.core.platform_specific.O_O;
 
 import java.util.Arrays;
 import java.util.List;
@@ -298,7 +300,11 @@ public class PortalManipulation {
         PortalExtension.get(to).adjustPositionAfterTeleport = PortalExtension.get(from).adjustPositionAfterTeleport;
         to.hasCrossPortalCollision = from.hasCrossPortalCollision;
         PortalExtension.get(to).bindCluster = PortalExtension.get(from).bindCluster;
-        to.animation.defaultAnimation = from.animation.defaultAnimation.copy();
+
+        if (!O_O.isDedicatedServer()) {
+            to.animation.defaultAnimation = from.animation.defaultAnimation.copy();
+        }
+
         to.setIsVisible(from.isVisible());
         
         if (includeSpecialProperties) {
@@ -322,7 +328,7 @@ public class PortalManipulation {
         AABB viewBox = Helper.getBoxByBottomPosAndSize(boxBottomCenter, viewBoxSize);
         for (Direction direction : Direction.values()) {
             Portal portal = createOrthodoxPortal(
-                Portal.entityType,
+                IPRegistry.PORTAL.get(),
                 boxWorld, areaWorld,
                 direction, Helper.getBoxSurface(viewBox, direction),
                 Helper.getBoxSurface(area, direction).getCenter()
@@ -337,7 +343,7 @@ public class PortalManipulation {
             McHelper.spawnServerEntity(portal);
             
             if (biWay) {
-                Portal reversePortal = createReversePortal(portal, Portal.entityType);
+                Portal reversePortal = createReversePortal(portal, IPRegistry.PORTAL.get());
                 
                 reversePortal.renderingMergable = innerRenderingMergable;
                 
@@ -402,8 +408,11 @@ public class PortalManipulation {
         Level world = hitPortals.isEmpty()
             ? entity.level()
             : hitPortals.get(hitPortals.size() - 1).getDestinationWorld();
+			
+			
         
-        Portal portal = new Portal(Portal.entityType, world);
+        //Portal portal = new Portal(Portal.entityType, world);
+        Portal portal = IPRegistry.PORTAL.get().create(world);
         
         portal.setPosRaw(pos.x, pos.y, pos.z);
         

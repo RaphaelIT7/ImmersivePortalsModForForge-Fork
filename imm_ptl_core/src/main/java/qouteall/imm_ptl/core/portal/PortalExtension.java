@@ -10,6 +10,7 @@ import qouteall.imm_ptl.core.teleportation.ServerTeleportationManager;
 
 import java.util.UUID;
 import java.util.function.Consumer;
+import qouteall.imm_ptl.core.platform_specific.O_O;
 
 // the additional features of a portal
 public class PortalExtension {
@@ -326,7 +327,9 @@ public class PortalExtension {
     // works on both client and server
     public void rectifyClusterPortals(Portal portal, boolean sync) {
         
-        portal.animation.defaultAnimation.inverseScale = false;
+		if (!O_O.isDedicatedServer()) {
+			portal.animation.defaultAnimation.inverseScale = false;
+		}
         
         if (flippedPortal != null) {
             flippedPortal = ServerTeleportationManager.teleportRegularEntityTo(
@@ -350,7 +353,9 @@ public class PortalExtension {
             
             PortalManipulation.copyAdditionalProperties(flippedPortal, portal, false);
             
-            flippedPortal.animation.defaultAnimation.inverseScale = false;
+			if (!O_O.isDedicatedServer()) {
+				flippedPortal.animation.defaultAnimation.inverseScale = false;
+			}
             
             if (portal.specialShape != null) {
                 flippedPortal.specialShape = portal.specialShape.getFlippedWithScaling(1.0);
@@ -391,7 +396,9 @@ public class PortalExtension {
             
             PortalManipulation.copyAdditionalProperties(reversePortal, portal, false);
             
-            reversePortal.animation.defaultAnimation.inverseScale = true;
+			if (!O_O.isDedicatedServer()) {
+				reversePortal.animation.defaultAnimation.inverseScale = true;
+			}
             
             if (portal.specialShape != null) {
                 reversePortal.specialShape = portal.specialShape.getFlippedWithScaling(1.0);
@@ -432,7 +439,9 @@ public class PortalExtension {
             
             PortalManipulation.copyAdditionalProperties(parallelPortal, portal, false);
             
-            parallelPortal.animation.defaultAnimation.inverseScale = true;
+			if (!O_O.isDedicatedServer()) {
+				parallelPortal.animation.defaultAnimation.inverseScale = true;
+			}
             
             parallelPortal.specialShape = portal.specialShape;
             

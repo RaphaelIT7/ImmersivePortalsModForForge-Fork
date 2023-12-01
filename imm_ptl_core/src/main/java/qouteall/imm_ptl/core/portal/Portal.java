@@ -58,6 +58,7 @@ import qouteall.imm_ptl.core.render.PortalGroup;
 import qouteall.imm_ptl.core.render.PortalRenderable;
 import qouteall.imm_ptl.core.render.PortalRenderer;
 import qouteall.imm_ptl.core.render.ViewAreaRenderer;
+import qouteall.imm_ptl.core.platform_specific.O_O;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.MiscHelper;
 import qouteall.q_misc_util.api.McRemoteProcedureCall;
@@ -228,7 +229,7 @@ public class Portal extends Entity implements
     @OnlyIn(Dist.CLIENT)
     PortalRenderInfo portalRenderInfo;
     
-    public final PortalAnimation animation = new PortalAnimation();
+    public PortalAnimation animation = null;
     
     @Nullable
     private PortalState lastTickPortalState;
@@ -251,6 +252,10 @@ public class Portal extends Entity implements
         EntityType<?> entityType, Level world
     ) {
         super(entityType, world);
+        
+    	if (!O_O.isDedicatedServer()) {
+    		animation = new PortalAnimation();
+    	}
     }
     
     @Override
@@ -356,7 +361,9 @@ public class Portal extends Entity implements
             visible = true;
         }
         
-        animation.readFromTag(compoundTag);
+        if (!O_O.isDedicatedServer()) {
+        	animation.readFromTag(compoundTag);
+        }
         
         readPortalDataSignal.emit(this, compoundTag);
         
@@ -425,8 +432,10 @@ public class Portal extends Entity implements
             );
         }
         
-        animation.writeToTag(compoundTag);
-        
+        if (!O_O.isDedicatedServer()) {
+        	animation.writeToTag(compoundTag);
+        }
+        	
         writePortalDataSignal.emit(this, compoundTag);
         
     }
@@ -920,7 +929,9 @@ public class Portal extends Entity implements
             serverPortalTickSignal.emit(this);
         }
         
-        animation.tick(this);
+        if (!O_O.isDedicatedServer()) {
+        	animation.tick(this);
+        }
         
         super.tick();
     }
@@ -1758,7 +1769,7 @@ public class Portal extends Entity implements
         setPos(pos);
         readAdditionalSaveData(customData);
         
-        if (animation.defaultAnimation.durationTicks > 0) {
+        if (!O_O.isDedicatedServer() && animation.defaultAnimation.durationTicks > 0) {
             animation.defaultAnimation.startClientDefaultAnimation(this, oldState);
         }
     }
@@ -1812,7 +1823,9 @@ public class Portal extends Entity implements
     }
     
     public void clearAnimationDrivers(boolean clearThisSide, boolean clearOtherSide) {
-        animation.clearAnimationDrivers(this, clearThisSide, clearOtherSide);
+		if (!O_O.isDedicatedServer()) {
+			animation.clearAnimationDrivers(this, clearThisSide, clearOtherSide);
+		}
     }
     
     public void addThisSideAnimationDriver(PortalAnimationDriver driver) {
@@ -1826,15 +1839,21 @@ public class Portal extends Entity implements
     }
     
     public void pauseAnimation() {
-        animation.setPaused(this, true);
+        if (!O_O.isDedicatedServer()) {
+        	animation.setPaused(this, true);
+        }
     }
     
     public void resumeAnimation() {
-        animation.setPaused(this, false);
+        if (!O_O.isDedicatedServer()) {
+        	animation.setPaused(this, false);
+        }
     }
     
     public void resetAnimationReferenceState(boolean resetThisSide, boolean resetOtherSide) {
-        this.animation.resetReferenceState(this, resetThisSide, resetOtherSide);
+        if (!O_O.isDedicatedServer()) {
+        	this.animation.resetReferenceState(this, resetThisSide, resetOtherSide);
+        }
     }
     
     public AnimationView getAnimationView() {

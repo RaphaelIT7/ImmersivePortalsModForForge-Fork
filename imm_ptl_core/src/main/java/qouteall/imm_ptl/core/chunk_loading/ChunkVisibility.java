@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.entity.Entity;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.portal.Portal;
@@ -218,6 +219,11 @@ public class ChunkVisibility {
                 );
 
                 for (Portal innerPortal : indirectNearbyPortals) {
+                   if (innerPortal.getDestPos() == null) { 
+                        System.out.println("Removed invalid shit!");
+                        innerPortal.remove(Entity.RemovalReason.KILLED);
+                        continue;
+                    }
                     func.accept(getGeneralPortalIndirectLoader(
                             player, transformedPlayerPos, innerPortal
                     ));
